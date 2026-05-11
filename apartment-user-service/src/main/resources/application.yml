@@ -1,0 +1,59 @@
+jwt:
+  secret: bXlTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb25NdXN0QmVBdExlYXN0MzJDaGFyYWN0ZXJzTG9uZw==
+  expiration-ms: 3600000
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+    allow-circular-references: true
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+  datasource:
+    url: jdbc:mysql://localhost:3306/apartment_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+mybatis-plus:
+  type-aliases-package: com.example.user.entity
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+      
+server:
+  port: 8081
+  
+logging:
+  level:
+    com.example.user: debug
+    org.springframework: info
+
+# Redis配置
+spring.data.redis:
+  host: 192.168.24.129
+  port: 6379
+  database: 0  # 用户服务使用database 0
+  timeout: 3000ms
+  lettuce:
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 0
+      max-wait: -1ms
+
+# Redisson配置
+spring.redisson:
+  config: |
+    singleServerConfig:
+      address: "redis://192.168.24.129:6379"
+      database: 0
+      connectionPoolSize: 64
+      connectionMinimumIdleSize: 10
+      timeout: 3000

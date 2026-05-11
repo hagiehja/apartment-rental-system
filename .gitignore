@@ -1,0 +1,30 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+.cursor/
+.trae/
+
+# Java / Maven
+target/
+bin/
+*.class
+*.jar
+*.jar.original
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/frontend-dist.zip
+
+# Logs / crash dumps
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Temporary debug files
+error_body.txt
+payment_error.txt
+orders_debug.txt
+orders_house5.txt
+query

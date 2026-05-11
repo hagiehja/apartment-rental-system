@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: apartment-payment-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.24.129:8848
+        namespace: public
+        group: DEFAULT_GROUP
+      config:
+        enabled: true # 启用配置中心
+        server-addr: 192.168.24.129:8848
+        namespace: public
+        file-extension: yaml
+        group: DEFAULT_GROUP

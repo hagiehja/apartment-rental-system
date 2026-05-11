@@ -1,0 +1,115 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: apartment-gateway
+  cloud:
+    gateway:
+      # 全局CORS配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      
+      # 路由配置
+      routes:
+        # ========================================
+        # 用户服务路由 (端口: 8081)
+        # ========================================
+        - id: user-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+        
+        # ========================================
+        # 房源服务路由 (端口: 8083)
+        # ========================================
+        - id: house-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/house/**
+          filters:
+            - StripPrefix=1
+        
+        # ========================================
+        # 订单服务路由 (端口: 8088)
+        # ========================================
+        - id: order-service
+          uri: http://localhost:8088
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=1
+        
+        # ========================================
+        # 支付服务路由 (端口: 8087)
+        # ========================================
+        - id: payment-service
+          uri: http://localhost:8087
+          predicates:
+            - Path=/api/payment/**,/api/account/**
+          filters:
+            - StripPrefix=1
+        
+        # ========================================
+        # 通知服务路由 (端口: 8091)
+        # ========================================
+        - id: notification-service
+          uri: http://localhost:8091
+          predicates:
+            - Path=/api/notification/**
+          filters:
+            - StripPrefix=1
+        
+        # ========================================
+        # 合同服务路由 (端口: 8092)
+        # ========================================
+        - id: contract-service
+          uri: http://localhost:8092
+          predicates:
+            - Path=/api/contract/**
+          filters:
+            - StripPrefix=1
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty.http.client: DEBUG
+
+# 网关信息
+gateway:
+  info:
+    version: 1.0.0
+    description: 公寓租赁系统API网关
+    services:
+      - name: user-service
+        port: 8081
+        paths: /api/user/**
+      - name: house-service
+        port: 8083
+        paths: /api/house/**
+      - name: order-service
+        port: 8088
+        paths: /api/order/**
+      - name: payment-service
+        port: 8087
+        paths: /api/payment/**, /api/account/**
+      - name: notification-service
+        port: 8091
+        paths: /api/notification/**
+      - name: contract-service
+        port: 8092
+        paths: /api/contract/**

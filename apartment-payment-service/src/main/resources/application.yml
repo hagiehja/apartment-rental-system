@@ -1,0 +1,52 @@
+server:
+  port: 8087
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+    allow-circular-references: true
+  application:
+    name: apartment-payment-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/apartment_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+mybatis-plus:
+  type-aliases-package: com.example.payment.entity
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.example.payment: debug
+    org.springframework: info
+
+# Redis配置
+spring.data.redis:
+  host: 192.168.24.129
+  port: 6379
+  database: 2  # 支付服务使用database 2
+  timeout: 3000ms
+  lettuce:
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 0
+      max-wait: -1ms
+
+# Redisson配置
+spring.redisson:
+  config: |
+    singleServerConfig:
+      address: "redis://192.168.24.129:6379"
+      database: 2
+      connectionPoolSize: 64
+      connectionMinimumIdleSize: 10
+      timeout: 3000

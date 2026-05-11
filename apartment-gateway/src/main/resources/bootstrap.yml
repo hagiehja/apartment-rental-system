@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: apartment-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.24.129:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        enabled: false
+      config:
+        server-addr: 192.168.24.129:8848
+        namespace: public
+        file-extension: yaml
+        group: DEFAULT_GROUP
+        enabled: false
+        import-check:
+          enabled: false

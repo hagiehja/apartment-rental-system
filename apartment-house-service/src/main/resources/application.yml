@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: apartment-house-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/apartment_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+  # Redis 连接配置：用于缓存热点房源，减轻 MySQL 查询压力
+  data:
+    redis:
+      host: 192.168.24.129
+      port: 6379
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+  # 使用 Redis 作为 Spring Cache 的后端
+  cache:
+    type: redis
+
+mybatis-plus:
+  type-aliases-package: com.example.house.entity
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+server:
+  port: 8083
+
+logging:
+  level:
+    com.example.house: debug
+    org.springframework: info

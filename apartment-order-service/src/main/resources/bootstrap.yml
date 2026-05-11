@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: apartment-order-service
+  cloud:
+    nacos:
+      discovery:
+        enabled: false # 禁用服务发现
+      config:
+        enabled: false # 禁用配置中心
