@@ -4,6 +4,15 @@ spring:
   cloud:
     nacos:
       discovery:
-        enabled: false # 禁用服务发现
+        server-addr: ${NACOS_ADDR:192.168.24.129:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
       config:
-        enabled: false # 禁用配置中心
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_ADDR:192.168.24.129:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        file-extension: yaml
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        import-check:
+          enabled: false

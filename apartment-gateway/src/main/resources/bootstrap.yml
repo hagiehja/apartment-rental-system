@@ -4,15 +4,15 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 192.168.24.129:8848
-        namespace: public
-        group: DEFAULT_GROUP
-        enabled: false
+        server-addr: ${NACOS_ADDR:192.168.24.129:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
       config:
-        server-addr: 192.168.24.129:8848
-        namespace: public
+        server-addr: ${NACOS_ADDR:192.168.24.129:8848}
+        namespace: ${NACOS_NAMESPACE:public}
         file-extension: yaml
-        group: DEFAULT_GROUP
-        enabled: false
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        enabled: ${NACOS_CONFIG_ENABLED:false}
         import-check:
           enabled: false

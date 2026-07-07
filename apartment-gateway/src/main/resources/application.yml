@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
@@ -27,7 +27,7 @@ spring:
         # 用户服务路由 (端口: 8081)
         # ========================================
         - id: user-service
-          uri: http://localhost:8081
+          uri: lb://apartment-user-service
           predicates:
             - Path=/api/user/**
           filters:
@@ -37,7 +37,7 @@ spring:
         # 房源服务路由 (端口: 8083)
         # ========================================
         - id: house-service
-          uri: http://localhost:8083
+          uri: lb://apartment-house-service
           predicates:
             - Path=/api/house/**
           filters:
@@ -47,7 +47,7 @@ spring:
         # 订单服务路由 (端口: 8088)
         # ========================================
         - id: order-service
-          uri: http://localhost:8088
+          uri: lb://apartment-order-service
           predicates:
             - Path=/api/order/**
           filters:
@@ -57,7 +57,7 @@ spring:
         # 支付服务路由 (端口: 8087)
         # ========================================
         - id: payment-service
-          uri: http://localhost:8087
+          uri: lb://apartment-payment-service
           predicates:
             - Path=/api/payment/**,/api/account/**
           filters:
@@ -67,7 +67,7 @@ spring:
         # 通知服务路由 (端口: 8091)
         # ========================================
         - id: notification-service
-          uri: http://localhost:8091
+          uri: lb://apartment-notice-service
           predicates:
             - Path=/api/notification/**
           filters:
@@ -77,7 +77,7 @@ spring:
         # 合同服务路由 (端口: 8092)
         # ========================================
         - id: contract-service
-          uri: http://localhost:8092
+          uri: lb://apartment-contract-service
           predicates:
             - Path=/api/contract/**
           filters:

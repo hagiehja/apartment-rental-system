@@ -1,13 +1,13 @@
 server:
-  port: 8092
+  port: ${SERVER_PORT:8092}
 
 spring:
   application:
     name: apartment-contract-service
   datasource:
-    url: jdbc:mysql://localhost:3306/apartment_contract?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${CONTRACT_MYSQL_DATABASE:apartment_contract}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 # MyBatis-Plus 配置
@@ -23,21 +23,21 @@ mybatis-plus:
 contract:
   file:
     # Windows环境
-    base-path: C:/Users/Zz/apartment-rental-system/contracts
+    base-path: ${CONTRACT_FILE_BASE_PATH:/data/apartment/contracts}
     # Linux/Mac环境可使用: /var/apartment/contracts
 
 # 订单服务地址
 order:
   service:
-    url: http://localhost:8083
+    url: ${ORDER_SERVICE_URL:http://apartment-order-service:8088}
 
 # 通知服务地址
 notification:
   service:
-    url: http://localhost:8091
+    url: ${NOTIFICATION_SERVICE_URL:http://apartment-notice-service:8091}
 
 rocketmq:
-  name-server: 192.168.24.129:9876
+  name-server: ${ROCKETMQ_NAMESRV:192.168.24.129:9876}
   producer:
     group: contract-service-producer-group
 

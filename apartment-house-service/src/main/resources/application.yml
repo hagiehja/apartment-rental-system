@@ -2,9 +2,9 @@ spring:
   application:
     name: apartment-house-service
   datasource:
-    url: jdbc:mysql://localhost:3306/apartment_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:apartment_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
@@ -12,8 +12,8 @@ spring:
   # Redis 连接配置：用于缓存热点房源，减轻 MySQL 查询压力
   data:
     redis:
-      host: 192.168.24.129
-      port: 6379
+      host: ${REDIS_HOST:192.168.24.129}
+      port: ${REDIS_PORT:6379}
       database: 0
       timeout: 5000ms
       lettuce:
@@ -34,7 +34,7 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 server:
-  port: 8083
+  port: ${SERVER_PORT:8083}
 
 logging:
   level:

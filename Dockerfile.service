@@ -1,0 +1,28 @@
+FROM maven:3.9-eclipse-temurin-17 AS build
+
+WORKDIR /workspace
+COPY pom.xml .
+COPY apartment-gateway/pom.xml apartment-gateway/pom.xml
+COPY apartment-user-service/pom.xml apartment-user-service/pom.xml
+COPY apartment-house-service/pom.xml apartment-house-service/pom.xml
+COPY apartment-order-service/pom.xml apartment-order-service/pom.xml
+COPY apartment-payment-service/pom.xml apartment-payment-service/pom.xml
+COPY apartment-contract-service/pom.xml apartment-contract-service/pom.xml
+COPY apartment-notice-service/pom.xml apartment-notice-service/pom.xml
+RUN mvn -q -DskipTests dependency:go-offline
+
+COPY . .
+ARG MODULE
+RUN mvn -q -pl ${MODULE} -am -DskipTests package
+
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+ARG MODULE
+ENV TZ=Asia/Shanghai \
+    JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+
+COPY --from=build /workspace/${MODULE}/target/*.jar /app/app.jar
+EXPOSE 8080
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

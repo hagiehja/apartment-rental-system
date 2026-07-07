@@ -1,5 +1,5 @@
 server:
-  port: 8087
+  port: ${SERVER_PORT:8087}
 
 spring:
   main:
@@ -8,9 +8,9 @@ spring:
   application:
     name: apartment-payment-service
   datasource:
-    url: jdbc:mysql://localhost:3306/apartment_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:apartment_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
@@ -30,8 +30,8 @@ logging:
 
 # Redis配置
 spring.data.redis:
-  host: 192.168.24.129
-  port: 6379
+  host: ${REDIS_HOST:192.168.24.129}
+  port: ${REDIS_PORT:6379}
   database: 2  # 支付服务使用database 2
   timeout: 3000ms
   lettuce:
@@ -45,7 +45,7 @@ spring.data.redis:
 spring.redisson:
   config: |
     singleServerConfig:
-      address: "redis://192.168.24.129:6379"
+      address: "redis://${REDIS_HOST:192.168.24.129}:${REDIS_PORT:6379}"
       database: 2
       connectionPoolSize: 64
       connectionMinimumIdleSize: 10

@@ -1,5 +1,5 @@
 server:
-  port: 8088
+  port: ${SERVER_PORT:8088}
   tomcat:
     threads:
       max: 500         # 默认 200，提升至 500 支撑高并发
@@ -13,9 +13,9 @@ spring:
   application:
     name: apartment-order-service
   datasource:
-    url: jdbc:mysql://localhost:3306/apartment_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&rewriteBatchedStatements=true
-    username: root
-    password: 123456
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:apartment_db}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&rewriteBatchedStatements=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 50        # 核心优化：从 10 提升到 50，消除连接池瓶颈
@@ -41,8 +41,8 @@ logging:
 
 # Redis配置
 spring.data.redis:
-  host: 192.168.24.129
-  port: 6379
+  host: ${REDIS_HOST:192.168.24.129}
+  port: ${REDIS_PORT:6379}
   database: 1
   timeout: 3000ms
   lettuce:
@@ -56,13 +56,13 @@ spring.data.redis:
 spring.redisson:
   config: |
     singleServerConfig:
-      address: "redis://192.168.24.129:6379"
+      address: "redis://${REDIS_HOST:192.168.24.129}:${REDIS_PORT:6379}"
       database: 1
       connectionPoolSize: 128     # 提升 Redisson 连接池，支撑高并发锁操作
       connectionMinimumIdleSize: 32
       timeout: 3000
 
 rocketmq:
-  name-server: 192.168.24.129:9876
+  name-server: ${ROCKETMQ_NAMESRV:192.168.24.129:9876}
   producer:
     group: order-service-producer-group

@@ -22,6 +22,9 @@ frontend/frontend-dist.zip
 hs_err_pid*.log
 replay_pid*.log
 
+# Local Docker app env
+.env.app
+
 # Temporary debug files
 error_body.txt
 payment_error.txt

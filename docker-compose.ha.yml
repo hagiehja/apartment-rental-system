@@ -1,0 +1,111 @@
+name: apartment-ha
+
+x-app-common: &app-common
+  build:
+    context: .
+    dockerfile: Dockerfile.service
+  env_file:
+    - .env.app
+  restart: unless-stopped
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${HOST_HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - apartment-gateway
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  apartment-gateway:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-gateway
+    environment:
+      SERVER_PORT: 8080
+    expose:
+      - "8080"
+    depends_on:
+      - apartment-user-service
+      - apartment-house-service
+      - apartment-order-service
+      - apartment-payment-service
+      - apartment-notice-service
+      - apartment-contract-service
+
+  apartment-user-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-user-service
+    expose:
+      - "8081"
+
+  apartment-house-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-house-service
+    expose:
+      - "8083"
+
+  apartment-order-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-order-service
+    expose:
+      - "8088"
+
+  apartment-payment-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-payment-service
+    expose:
+      - "8087"
+
+  apartment-notice-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-notice-service
+    expose:
+      - "8091"
+
+  apartment-contract-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-contract-service
+    expose:
+      - "8092"
+    volumes:
+      - contract-files:/data/apartment/contracts
+
+volumes:
+  contract-files:

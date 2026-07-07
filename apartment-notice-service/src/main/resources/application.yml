@@ -1,18 +1,18 @@
 server:
-  port: 8091
+  port: ${SERVER_PORT:8091}
 
 spring:
   application:
     name: apartment-notice-service
   datasource:
-    url: jdbc:mysql://localhost:3306/apartment_notification?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${NOTICE_MYSQL_DATABASE:apartment_notification}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 # RocketMQ 配置
 rocketmq:
-  name-server: 192.168.24.129:9876
+  name-server: ${ROCKETMQ_NAMESRV:192.168.24.129:9876}
   producer:
     group: notification-producer-group
     send-message-timeout: 3000
