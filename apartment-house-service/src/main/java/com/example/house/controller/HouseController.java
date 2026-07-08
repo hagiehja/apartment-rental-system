@@ -4,6 +4,7 @@ import com.example.house.dto.*;
 import com.example.house.model.PageResult;
 import com.example.house.model.Result;
 import com.example.house.service.HouseService;
+import com.example.house.service.RecommendationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class HouseController {
 
     private final HouseService houseService;
+    private final RecommendationService recommendationService;
 
     /**
      * 发布房源

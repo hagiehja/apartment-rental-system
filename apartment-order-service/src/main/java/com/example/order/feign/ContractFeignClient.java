@@ -15,7 +15,7 @@ import java.util.Map;
  *
  * 注意：合同服务 Controller 返回 Result<Long>，因此这里必须用 Result 类型接收
  */
-@FeignClient(name = "apartment-contract-service", url = "http://localhost:8092")
+@FeignClient(name = "apartment-contract-service", url = "${feign.url.contract-service:http://apartment-contract-service:8092}")
 public interface ContractFeignClient {
 
     /**

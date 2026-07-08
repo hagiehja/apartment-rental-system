@@ -1,0 +1,61 @@
+name: nacos-cluster
+
+# ============ L2 Nacos 高可用:3 节点集群 ============
+# 集群模式:Distro 协议(AP)同步服务注册表 + 共享 MySQL 存配置
+# 容错:任意 1 节点宕机,集群仍可用(3 节点多数派)
+# 每节点限 256MB 堆,适配虚拟机内存
+
+x-nacos-common: &nacos-common
+  image: nacos/nacos-server:v2.4.1
+  environment:
+    MODE: cluster
+    NACOS_SERVERS: "172.31.0.11:8848 172.31.0.12:8848 172.31.0.13:8848"
+    SPRING_DATASOURCE_PLATFORM: mysql
+    MYSQL_SERVICE_HOST: 192.168.24.129
+    MYSQL_SERVICE_PORT: "3307"
+    MYSQL_SERVICE_DB_NAME: nacos_config
+    MYSQL_SERVICE_USER: root
+    MYSQL_SERVICE_PASSWORD: "123456"
+    MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false&serverTimezone=Asia/Shanghai"
+    JVM_XMS: 256m
+    JVM_XMX: 256m
+    JVM_XMN: 128m
+    NACOS_AUTH_ENABLE: "false"
+    PREFER_HOSTNAME_OVER_IP: "false"
+    TZ: Asia/Shanghai
+  restart: unless-stopped
+
+services:
+  nacos1:
+    <<: *nacos-common
+    container_name: nacos1
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    networks:
+      nacos-ha-net:
+        ipv4_address: 172.31.0.11
+
+  nacos2:
+    <<: *nacos-common
+    container_name: nacos2
+    ports:
+      - "8849:8848"
+      - "9849:9848"
+    networks:
+      nacos-ha-net:
+        ipv4_address: 172.31.0.12
+
+  nacos3:
+    <<: *nacos-common
+    container_name: nacos3
+    ports:
+      - "8850:8848"
+      - "9850:9848"
+    networks:
+      nacos-ha-net:
+        ipv4_address: 172.31.0.13
+
+networks:
+  nacos-ha-net:
+    external: true

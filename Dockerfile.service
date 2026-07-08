@@ -1,6 +1,8 @@
 FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /workspace
+# 注入阿里云 Maven 镜像源,加速依赖下载(国内从 10KB/s → 4MB/s)
+COPY settings.xml /root/.m2/settings.xml
 COPY pom.xml .
 COPY apartment-gateway/pom.xml apartment-gateway/pom.xml
 COPY apartment-user-service/pom.xml apartment-user-service/pom.xml
@@ -9,13 +11,22 @@ COPY apartment-order-service/pom.xml apartment-order-service/pom.xml
 COPY apartment-payment-service/pom.xml apartment-payment-service/pom.xml
 COPY apartment-contract-service/pom.xml apartment-contract-service/pom.xml
 COPY apartment-notice-service/pom.xml apartment-notice-service/pom.xml
-RUN mvn -q -DskipTests dependency:go-offline
+RUN mvn -B -DskipTests dependency:go-offline \
+        -Dmaven.wagon.http.retryHandler.count=10 \
+        -Dmaven.wagon.http.connectionTimeout=120000 \
+        -Dmaven.wagon.http.readTimeout=120000 \
+        || echo "[go-offline partial, package step will complete remaining deps]"
 
 COPY . .
 ARG MODULE
 RUN mvn -q -pl ${MODULE} -am -DskipTests package
 
 FROM eclipse-temurin:17-jre
+
+# L0 容灾:装 curl,供 Docker HEALTHCHECK 探活 actuator/health
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 ARG MODULE

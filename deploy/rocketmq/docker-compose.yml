@@ -1,0 +1,67 @@
+# ================================================================
+# RocketMQ 5.3.1 集群 - 单节点部署(论文 P0 级弹性消息中间件)
+# 组成:
+#   - namesrv : 名称服务,路由注册中心(9876)
+#   - broker  : 消息存储与转发(10911/10909),注册 IP 为宿主机
+#   - dashboard: 可视化控制台(8888 → 容器 8080)
+# 暴露端口:
+#   - 9876  : NameServer,所有应用客户端连接
+#   - 10911 : Broker 主端口
+#   - 10909 : Broker VIP(可选,加快消费)
+#   - 8888  : Web 控制台
+# ================================================================
+name: rocketmq-stack
+
+services:
+  namesrv:
+    image: apache/rocketmq:5.3.1
+    container_name: rocketmq-namesrv
+    restart: unless-stopped
+    command: sh mqnamesrv
+    environment:
+      JAVA_OPT_EXT: "-server -Xms512m -Xmx512m -Xmn128m"
+    ports:
+      - "9876:9876"
+    networks:
+      - rocketmq-net
+
+  broker:
+    image: apache/rocketmq:5.3.1
+    container_name: rocketmq-broker
+    restart: unless-stopped
+    command: sh mqbroker -c /etc/rocketmq/broker.conf
+    environment:
+      JAVA_OPT_EXT: "-server -Xms1g -Xmx1g -Xmn256m"
+    volumes:
+      - ./broker.conf:/etc/rocketmq/broker.conf:ro
+      - broker-store:/home/rocketmq/store
+      - broker-logs:/home/rocketmq/logs
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+    depends_on:
+      - namesrv
+    networks:
+      - rocketmq-net
+
+  dashboard:
+    image: apacherocketmq/rocketmq-dashboard:1.0.0
+    container_name: rocketmq-dashboard
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: "-Drocketmq.namesrv.addr=192.168.24.129:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false"
+    ports:
+      - "8888:8080"
+    depends_on:
+      - namesrv
+      - broker
+    networks:
+      - rocketmq-net
+
+volumes:
+  broker-store:
+  broker-logs:
+
+networks:
+  rocketmq-net:
+    driver: bridge

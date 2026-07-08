@@ -11,7 +11,7 @@ import java.util.Map;
  * 房源服务 Feign 客户端
  * 用于订单服务调用房源服务
  */
-@FeignClient(name = "apartment-house-service", url = "http://localhost:8083")
+@FeignClient(name = "apartment-house-service", url = "${feign.url.house-service:http://apartment-house-service:8083}")
 public interface HouseFeignClient {
 
     /**

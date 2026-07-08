@@ -30,8 +30,9 @@ logging:
 
 # Redis配置
 spring.data.redis:
-  host: ${REDIS_HOST:192.168.24.129}
-  port: ${REDIS_PORT:6379}
+  sentinel:
+    master: mymaster
+    nodes: 192.168.24.129:26379,192.168.24.129:26380,192.168.24.129:26381
   database: 2  # 支付服务使用database 2
   timeout: 3000ms
   lettuce:
@@ -44,9 +45,32 @@ spring.data.redis:
 # Redisson配置
 spring.redisson:
   config: |
-    singleServerConfig:
-      address: "redis://${REDIS_HOST:192.168.24.129}:${REDIS_PORT:6379}"
+    sentinelConfig:
+      masterName: mymaster
+      sentinelAddresses:
+        - "redis://192.168.24.129:26379"
+        - "redis://192.168.24.129:26380"
+        - "redis://192.168.24.129:26381"
       database: 2
       connectionPoolSize: 64
       connectionMinimumIdleSize: 10
       timeout: 3000
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness
+# ============ [L0 容灾] Sentinel 熔断/降级/限流 控制台接入 ============
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:192.168.24.129:8858}
+      eager: true       # 启动即连接控制台,而非首次访问才注册

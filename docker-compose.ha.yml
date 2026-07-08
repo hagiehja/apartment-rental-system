@@ -9,6 +9,12 @@ x-app-common: &app-common
   restart: unless-stopped
   extra_hosts:
     - "host.docker.internal:host-gateway"
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://localhost:$${SERVER_PORT:-8080}/actuator/health || exit 1"]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+    start_period: 60s
 
 services:
   nginx:
@@ -52,6 +58,8 @@ services:
       dockerfile: Dockerfile.service
       args:
         MODULE: apartment-user-service
+    environment:
+      SERVER_PORT: "8081"
     expose:
       - "8081"
 
@@ -62,6 +70,8 @@ services:
       dockerfile: Dockerfile.service
       args:
         MODULE: apartment-house-service
+    environment:
+      SERVER_PORT: "8083"
     expose:
       - "8083"
 
@@ -72,6 +82,8 @@ services:
       dockerfile: Dockerfile.service
       args:
         MODULE: apartment-order-service
+    environment:
+      SERVER_PORT: "8088"
     expose:
       - "8088"
 
@@ -82,6 +94,8 @@ services:
       dockerfile: Dockerfile.service
       args:
         MODULE: apartment-payment-service
+    environment:
+      SERVER_PORT: "8087"
     expose:
       - "8087"
 
@@ -92,6 +106,8 @@ services:
       dockerfile: Dockerfile.service
       args:
         MODULE: apartment-notice-service
+    environment:
+      SERVER_PORT: "8091"
     expose:
       - "8091"
 
@@ -102,6 +118,8 @@ services:
       dockerfile: Dockerfile.service
       args:
         MODULE: apartment-contract-service
+    environment:
+      SERVER_PORT: "8092"
     expose:
       - "8092"
     volumes:

@@ -1,0 +1,35 @@
+{
+  "bias": -1.15,
+  "linearWeights": {
+    "match.city": 0.55,
+    "match.district": 1.05,
+    "match.rentType": 0.45,
+    "price.inRange": 0.85,
+    "price.nearRange": 0.30,
+    "price.bucket.mid": 0.18,
+    "room.exact": 0.65,
+    "room.near": 0.25,
+    "status.available": 0.75,
+    "status.rented": -0.25,
+    "popularity.high": 0.35,
+    "popularity.medium": 0.15,
+    "freshness.week": 0.40,
+    "freshness.month": 0.18
+  },
+  "factors": {
+    "match.city": [0.35, 0.05, 0.12],
+    "match.district": [0.70, 0.12, 0.18],
+    "match.rentType": [0.22, 0.45, 0.10],
+    "price.inRange": [0.62, 0.15, 0.20],
+    "price.nearRange": [0.28, 0.06, 0.08],
+    "price.bucket.mid": [0.12, 0.05, 0.04],
+    "room.exact": [0.18, 0.55, 0.16],
+    "room.near": [0.08, 0.28, 0.08],
+    "status.available": [0.30, 0.18, 0.48],
+    "status.rented": [-0.08, -0.05, -0.10],
+    "popularity.high": [0.20, 0.10, 0.35],
+    "popularity.medium": [0.08, 0.04, 0.14],
+    "freshness.week": [0.24, 0.08, 0.32],
+    "freshness.month": [0.12, 0.04, 0.16]
+  }
+}

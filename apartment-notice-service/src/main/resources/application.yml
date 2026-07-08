@@ -37,3 +37,22 @@ logging:
   level:
     com.example.notification: debug
     org.apache.rocketmq: info
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness
+# ============ [L0 容灾] Sentinel 熔断/降级/限流 控制台接入 ============
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:192.168.24.129:8858}
+      eager: true       # 启动即连接控制台,而非首次访问才注册

@@ -11,7 +11,7 @@ export default defineConfig({
     // Gateway端口是8080，所有接口都以/api/开头
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://192.168.24.129',
         changeOrigin: true
       }
     }

@@ -11,7 +11,7 @@ import java.util.Map;
  * 支付服务 Feign 客户端
  * 用于订单服务调用支付服务（如退款）
  */
-@FeignClient(name = "apartment-payment-service", url = "http://localhost:8087")
+@FeignClient(name = "apartment-payment-service", url = "${feign.url.payment-service:http://apartment-payment-service:8087}")
 public interface PaymentFeignClient {
 
     /**

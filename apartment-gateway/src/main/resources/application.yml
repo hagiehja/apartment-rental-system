@@ -6,6 +6,27 @@ spring:
     name: apartment-gateway
   cloud:
     gateway:
+      # ============ [L0 容灾] 网关超时(防慢调用拖垮下游) ============
+      httpclient:
+        connect-timeout: 2000      # TCP 连接超时 2s
+        response-timeout: 10s      # 整体响应超时 10s
+      # ============ [L0 容灾] 默认重试(仅对幂等 GET + 5xx,POST 不重试避免重复下单) ============
+      default-filters:
+        - name: Retry
+          args:
+            retries: 3
+            series: SERVER_ERROR
+            statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
+            methods: GET
+            exceptions: java.io.IOException, java.util.concurrent.TimeoutException
+            backoff:
+              firstBackoff: 100ms
+              maxBackoff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
+        - name: RequestSize
+          args:
+            maxSize: 10MB
       # 全局CORS配置
       globalcors:
         cors-configurations:
@@ -113,3 +134,15 @@ gateway:
       - name: contract-service
         port: 8092
         paths: /api/contract/**
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness

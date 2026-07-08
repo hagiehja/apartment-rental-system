@@ -1,0 +1,41 @@
+name: mysql-ha
+
+# ============ L2 MySQL 高可用:1主 + 1从(GTID 复制) ============
+services:
+  mysql-ha-master:
+    image: mysql:5.7
+    container_name: mysql-ha-master
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+    command: >
+      --server-id=1 --log-bin=mysql-bin
+      --gtid-mode=ON --enforce-gtid-consistency=ON
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql-ha-master-data:/var/lib/mysql
+      - ./master-init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  mysql-ha-slave:
+    image: mysql:5.7
+    container_name: mysql-ha-slave
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+    command: >
+      --server-id=2 --log-bin=mysql-bin
+      --gtid-mode=ON --enforce-gtid-consistency=ON
+      --read-only=1
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3311:3306"
+    depends_on:
+      - mysql-ha-master
+    volumes:
+      - mysql-ha-slave-data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  mysql-ha-master-data:
+  mysql-ha-slave-data:
