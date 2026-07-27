@@ -120,21 +120,40 @@
               <div class="card-body">
                 <h1 class="house-title">{{ house.title }}</h1>
                 <p class="house-address">📍 {{ house.province }}{{ house.city }}{{ house.district }}{{ house.address }}</p>
-                
+
                 <div class="price-box">
                   <span class="price price-lg">¥{{ house.price }}</span>
                   <span class="price-unit">/月</span>
                 </div>
-                
+
+                <!-- 房东信息卡片 -->
+                <div class="landlord-card" v-if="house.landlordName">
+                  <div class="landlord-avatar">🏠</div>
+                  <div class="landlord-info">
+                    <div class="landlord-name-row">
+                      <strong>{{ house.landlordName }}</strong>
+                      <span class="tag tag-success">认证房东</span>
+                    </div>
+                    <div class="landlord-meta">
+                      <span>📞 {{ maskPhone(house.landlordPhone) }}</span>
+                      <span>·</span>
+                      <span>{{ house.landlordHouseCount || 0 }} 套房源</span>
+                    </div>
+                    <button class="btn btn-link btn-sm" @click="goToLandlord">
+                      查看房东全部房源 →
+                    </button>
+                  </div>
+                </div>
+
                 <div class="action-buttons">
-                  <button 
+                  <button
                     v-if="house.status === 'AVAILABLE'"
                     class="btn btn-primary btn-lg btn-block"
                     @click="handleRent"
                   >
                     立即租房
                   </button>
-                  <button 
+                  <button
                     v-else
                     class="btn btn-default btn-lg btn-block"
                     disabled
@@ -142,7 +161,7 @@
                     {{ house.status === 'RENTED' ? '已出租' : '已下架' }}
                   </button>
                 </div>
-                
+
                 <div class="meta-info">
                   <span>👁 {{ house.viewCount }} 次浏览</span>
                   <span>📅 发布于 {{ formatDate(house.createTime) }}</span>
@@ -166,7 +185,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getHouseDetail } from '../../api/house'
+import { getHouseDetail, trackBehavior } from '../../api/house'
 import { isLoggedIn, getCurrentUser } from '../../api/user'
 
 import { DEFAULT_IMAGE, handleImageError } from '../../utils/image'
@@ -250,14 +269,27 @@ export default {
         router.push({ name: 'Login', query: { redirect: route.fullPath } })
         return
       }
-      
+
       const user = getCurrentUser()
       if (user.role === 'LANDLORD') {
         alert('房东账号不能租房')
         return
       }
-      
+
       router.push(`/order/create/${house.value.houseId}`)
+    }
+
+    // 跳转到房东主页(查看该房东的所有房源)
+    const goToLandlord = () => {
+      if (house.value?.landlordId) {
+        router.push(`/landlord/${house.value.landlordId}/houses`)
+      }
+    }
+
+    // 手机号脱敏 (138-0000-1234 → 138****1234)
+    const maskPhone = (phone) => {
+      if (!phone || phone.length < 11) return phone
+      return phone.substring(0, 3) + '****' + phone.substring(7)
     }
     
     // 格式化日期
@@ -269,6 +301,13 @@ export default {
     
     onMounted(() => {
       loadHouse()
+      // 行为埋点: 用户浏览详情即上报 VIEW 事件,用于推荐模型训练数据收集
+      const houseId = route.params.id
+      const user = getCurrentUser()
+      if (user && houseId) {
+        trackBehavior({ houseId: Number(houseId), behaviorType: 'VIEW', source: 'detail' })
+          .catch(() => { /* 静默失败,不影响浏览 */ })
+      }
     })
     
     return {
@@ -282,6 +321,8 @@ export default {
       statusText,
       statusClass,
       handleRent,
+      goToLandlord,
+      maskPhone,
       formatDate,
       handleImageError
     }
@@ -436,6 +477,74 @@ export default {
 
 .price-box .price {
   font-size: 32px;
+}
+
+/* 房东信息卡片 */
+.landlord-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f7ff 100%);
+  border: 1px solid #d6e4ff;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.landlord-avatar {
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.landlord-info {
+  flex: 1;
+}
+
+.landlord-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.landlord-name-row strong {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.landlord-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 12px;
 }
 
 .action-buttons {

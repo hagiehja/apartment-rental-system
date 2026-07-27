@@ -1,5 +1,7 @@
 jwt:
-  secret: ${JWT_SECRET:bXlTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb25NdXN0QmVBdExlYXN0MzJDaGFyYWN0ZXJzTG9uZw==}
+  # [VULN-09 修复] 不再硬编码默认密钥, 必须由 env JWT_SECRET 提供
+  # 生产: openssl rand -base64 48 生成, 写入 .env.app 或 K8s Secret
+  secret: ${JWT_SECRET:}
   expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 spring:
@@ -40,6 +42,8 @@ spring.data.redis:
   sentinel:
     master: mymaster
     nodes: 192.168.24.129:26379,192.168.24.129:26380,192.168.24.129:26381
+    password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+  password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
   database: 0  # 用户服务使用database 0
   timeout: 3000ms
   lettuce:
@@ -58,6 +62,8 @@ spring.redisson:
         - "redis://192.168.24.129:26379"
         - "redis://192.168.24.129:26380"
         - "redis://192.168.24.129:26381"
+      sentinelPassword: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
       database: 0
       connectionPoolSize: 64
       connectionMinimumIdleSize: 10
@@ -68,7 +74,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: always

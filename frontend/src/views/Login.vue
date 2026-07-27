@@ -84,14 +84,19 @@
           <button type="submit" class="btn btn-primary btn-block btn-xl" :disabled="loading">
             {{ loading ? '正在登录...' : '立即登录' }}
           </button>
+
+          <div class="register-link">
+            还没有账号？
+            <router-link to="/register">立即注册</router-link>
+          </div>
         </form>
-        
+
         <!-- 测试账号区域 -->
         <div class="test-accounts-section">
           <div class="divider">
             <span>快速测试通道</span>
           </div>
-          
+
           <div class="account-grid">
             <div class="role-group">
               <span class="role-label">我是房东</span>
@@ -100,12 +105,19 @@
                 <button class="account-pill landlord" @click="fillAccount('landlord2')">Landlord B</button>
               </div>
             </div>
-            
+
             <div class="role-group">
               <span class="role-label">我是租客</span>
               <div class="pill-group">
                 <button class="account-pill tenant" @click="fillAccount('tenant1')">Tenant A</button>
                 <button class="account-pill tenant" @click="fillAccount('tenant2')">Tenant B</button>
+              </div>
+            </div>
+
+            <div class="role-group admin-group">
+              <span class="role-label admin-label">管理员</span>
+              <div class="pill-group">
+                <button class="account-pill admin" @click="fillAccount('user_0000044')">🛡️ Admin</button>
               </div>
             </div>
           </div>
@@ -180,8 +192,8 @@ export default {
 
 /* 左侧品牌区 - 优化比例和背景 */
 .branding-side {
-  width: 70%; /* Increased to 70% as requested */
-  min-width: 600px;
+  width: 55%;
+  min-width: 480px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -478,6 +490,49 @@ export default {
   background: var(--primary-color);
   color: #fff;
   box-shadow: 0 4px 6px rgba(122, 157, 140, 0.2);
+}
+
+/* 注册链接 */
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.register-link a {
+  color: var(--primary-color);
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+/* 管理员快捷组 */
+.role-group.admin-group {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+.role-label.admin-label {
+  color: #667eea;
+  font-weight: 700;
+}
+
+.account-pill.admin {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+}
+
+.account-pill.admin:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #65439a 100%);
+  color: #fff;
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.35);
 }
 
 .pwd-hint {

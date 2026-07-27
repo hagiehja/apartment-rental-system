@@ -12,4 +12,6 @@ public interface RecommendationService {
     void savePreference(UserPreferenceDTO preferenceDTO, Long headerUserId);
 
     PageResult<HouseRecommendDTO> recommend(Long userId, Integer pageNum, Integer pageSize);
+
+    UserPreferenceDTO getPreference(Long userId);
 }

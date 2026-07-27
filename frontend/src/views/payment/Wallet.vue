@@ -116,7 +116,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { getAccountBalance, getAccountTransactions } from '../../api/payment'
 import { useWalletStore } from '../../stores/walletStore'
 
@@ -158,7 +158,9 @@ export default {
     const getTypeText = (type) => {
       const map = {
         'PAYMENT': '支付',
+        'RENT_PAYMENT': '支付',
         'INCOME': '收入',
+        'RENT_INCOME': '收入',
         'REFUND': '退款',
         'WITHDRAW': '提现'
       }
@@ -169,7 +171,9 @@ export default {
     const getTypeClass = (type) => {
       const map = {
         'PAYMENT': 'tag-default',
+        'RENT_PAYMENT': 'tag-default',
         'INCOME': 'tag-success',
+        'RENT_INCOME': 'tag-success',
         'REFUND': 'tag-warning',
         'WITHDRAW': 'tag-primary'
       }
@@ -178,7 +182,7 @@ export default {
 
     // 金额样式
     const getAmountClass = (type) => {
-       if (type === 'INCOME' || type === 'REFUND') return 'text-success font-bold'
+       if (type === 'INCOME' || type === 'RENT_INCOME' || type === 'REFUND') return 'text-success font-bold'
        return 'text-error font-bold'
     }
     
@@ -249,7 +253,7 @@ export default {
       showRefreshTip,
       refreshReason,
       balanceChangeDetails,
-      displayBalance: walletStore.displayBalance,
+      displayBalance: computed(() => walletStore.displayBalance),
       formatDateTime,
       getTypeText,
       getTypeClass,

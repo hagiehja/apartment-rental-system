@@ -13,6 +13,10 @@ public class HouseListDTO implements Serializable {
 
     private Long houseId;
 
+    private Long landlordId; // 房东ID
+
+    private String landlordName; // 房东用户名
+
     private String title;
 
     private String city;

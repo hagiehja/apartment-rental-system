@@ -48,19 +48,19 @@
             全览房源 <span class="arrow">→</span>
           </router-link>
         </div>
-        
+
         <div v-if="loading" class="loading">
           <div class="loading-spinner"></div>
         </div>
-        
+
         <div v-else-if="houses.length === 0" class="empty">
           <p>暂无房源数据</p>
         </div>
-        
+
         <div v-else class="house-grid bento-grid">
-          <div 
-            v-for="(house, index) in houses" 
-            :key="house.houseId" 
+          <div
+            v-for="(house, index) in houses"
+            :key="house.houseId"
             class="house-card card"
             :class="{ 'bento-large': index === 0, 'bento-medium': index === 1 }"
             @click="goToDetail(house.houseId)"
@@ -84,6 +84,38 @@
                 <span class="meta-dot">·</span>
                 <span class="meta-item">{{ house.area }}㎡</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI 个性化推荐(登录用户可见) -->
+      <section v-if="isLoggedIn && recommendHouses.length > 0" class="section ai-section">
+        <div class="section-header">
+          <div class="title-group">
+            <h2>🤖 AI 为你推荐</h2>
+            <span class="subtitle">Powered by TensorFlow FM · AUC {{ (modelAuc * 100).toFixed(1) }}%</span>
+          </div>
+          <router-link to="/recommend" class="link-btn">
+            查看更多 <span class="arrow">→</span>
+          </router-link>
+        </div>
+
+        <div class="recommend-strip">
+          <div
+            v-for="house in recommendHouses"
+            :key="'rec-' + house.houseId"
+            class="rec-mini-card card"
+            @click="goToDetail(house.houseId)"
+          >
+            <div class="rec-mini-cover">
+              <img :src="house.coverImage || defaultImage" :alt="house.title" @error="handleImageError"/>
+              <div class="rec-score">{{ house.recommendScore.toFixed(0) }}</div>
+            </div>
+            <div class="rec-mini-info">
+              <h4>{{ house.title }}</h4>
+              <div class="rec-mini-meta">📍 {{ house.city }} · {{ house.roomCount }}室 · ¥{{ house.price }}/月</div>
+              <div class="rec-mini-reason">{{ house.recommendReason }}</div>
             </div>
           </div>
         </div>
@@ -123,24 +155,29 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getHouseList } from '../api/house'
+import { getHouseList, getRecommendations, getRecommendModelInfo } from '../api/house'
 import { DEFAULT_IMAGE, handleImageError } from '../utils/image'
 
 export default {
   name: 'Home',
   setup() {
     const router = useRouter()
-    
+
     // 状态定义
     const searchCity = ref('')
     const houses = ref([])
     const loading = ref(false)
-    
+    const recommendHouses = ref([])
+    const modelAuc = ref(0)
+
     const hotCities = ['深圳市', '广州市', '北京市', '上海市', '杭州市']
     const defaultImage = DEFAULT_IMAGE
-    
+
+    // 已登录判断
+    const isLoggedIn = computed(() => !!localStorage.getItem('userInfo'))
+
     // 加载热门房源
     const loadHotHouses = async () => {
       loading.value = true
@@ -153,36 +190,56 @@ export default {
         loading.value = false
       }
     }
-    
+
+    // 加载个性化推荐(已登录)
+    const loadRecommendations = async () => {
+      if (!isLoggedIn.value) return
+      try {
+        // 加载 TF 模型 AUC 指标
+        getRecommendModelInfo().then(res => {
+          modelAuc.value = res.data?.valAuc || 0
+        }).catch(() => {})
+        // 加载推荐房源
+        const res = await getRecommendations({ pageNum: 1, pageSize: 4 })
+        recommendHouses.value = res.data?.records || []
+      } catch (e) {
+        console.warn('推荐加载失败(可能未设置偏好)', e)
+      }
+    }
+
     // 搜索
     const handleSearch = () => {
-      router.push({ 
-        path: '/houses', 
-        query: { city: searchCity.value } 
+      router.push({
+        path: '/houses',
+        query: { city: searchCity.value }
       })
     }
-    
+
     // 快捷搜索
     const quickSearch = (city) => {
       searchCity.value = city
       handleSearch()
     }
-    
+
     // 跳转详情
     const goToDetail = (id) => {
       router.push(`/house/${id}`)
     }
-    
+
     onMounted(() => {
       loadHotHouses()
+      loadRecommendations()
     })
-    
+
     return {
       searchCity,
       houses,
       loading,
       hotCities,
       defaultImage,
+      isLoggedIn,
+      recommendHouses,
+      modelAuc,
       handleSearch,
       quickSearch,
       goToDetail,
@@ -506,6 +563,90 @@ export default {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 24px;
+}
+
+/* AI Recommendation Strip */
+.ai-section .section-header .subtitle {
+  background: linear-gradient(135deg, #7CB342 0%, #558B2F 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 600;
+}
+
+.recommend-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.rec-mini-card {
+  cursor: pointer;
+  transition: all 0.3s;
+  overflow: hidden;
+}
+.rec-mini-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.rec-mini-cover {
+  position: relative;
+  height: 140px;
+  overflow: hidden;
+}
+.rec-mini-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rec-score {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(124, 179, 66, 0.95);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.rec-mini-info {
+  padding: 12px 14px;
+}
+.rec-mini-info h4 {
+  font-size: 14px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rec-mini-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.rec-mini-reason {
+  font-size: 11px;
+  color: var(--text-disabled);
+  background: #f5f7fa;
+  padding: 4px 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 992px) {
+  .recommend-strip { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 576px) {
+  .recommend-strip { grid-template-columns: 1fr; }
 }
 
 .feature-item {

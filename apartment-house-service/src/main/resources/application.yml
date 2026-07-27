@@ -1,20 +1,37 @@
 spring:
   application:
     name: apartment-house-service
+  # ============================================================
+  # dynamic-datasource 读写分离
+  # master(192.168.24.129:3310) 写,slave(3311) 读
+  # @DS("slave") 注解的方法走从库,默认走主库
+  # ============================================================
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:apartment_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:123456}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+    dynamic:
+      primary: master
+      strict: false
+      datasource:
+        master:
+          url: jdbc:mysql://${RW_MASTER_HOST:192.168.24.129}:${RW_MASTER_PORT:3310}/${MYSQL_DATABASE:apartment_db}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+          username: ${MYSQL_USERNAME:root}
+          password: ${MYSQL_PASSWORD:123456}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+        slave:
+          url: jdbc:mysql://${RW_SLAVE_HOST:192.168.24.129}:${RW_SLAVE_PORT:3311}/${MYSQL_DATABASE:apartment_db}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+          username: ${MYSQL_USERNAME:root}
+          password: ${MYSQL_PASSWORD:123456}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 30
+        minimum-idle: 10
   # Redis 连接配置：用于缓存热点房源，减轻 MySQL 查询压力
   data:
     redis:
       sentinel:
         master: mymaster
         nodes: 192.168.24.129:26379,192.168.24.129:26380,192.168.24.129:26381
+        password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
       database: 0
       timeout: 5000ms
       lettuce:
@@ -47,7 +64,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: always

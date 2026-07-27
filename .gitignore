@@ -31,3 +31,10 @@ payment_error.txt
 orders_debug.txt
 orders_house5.txt
 query
+
+# 临时垃圾文件
+NUL
+*.bak
+*.bak.*
+deploy/fix/
+**/NUL

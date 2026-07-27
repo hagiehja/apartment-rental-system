@@ -8,7 +8,7 @@ import java.util.Map;
  * 订单服务 Feign 客户端
  * 用于支付服务调用订单服务
  */
-@FeignClient(name = "apartment-order-service", url = "http://localhost:8088")
+@FeignClient(name = "apartment-order-service", url = "${feign.url.order-service:http://apartment-order-service:8088}")
 public interface OrderFeignClient {
 
     /**

@@ -3,11 +3,14 @@ package com.example.house.controller;
 import com.example.house.dto.*;
 import com.example.house.model.PageResult;
 import com.example.house.model.Result;
+import com.example.house.recommendation.fm.FmModelLoader;
 import com.example.house.service.HouseService;
 import com.example.house.service.RecommendationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 房源控制器
@@ -22,6 +25,7 @@ public class HouseController {
 
     private final HouseService houseService;
     private final RecommendationService recommendationService;
+    private final FmModelLoader fmModelLoader;
 
     /**
      * 发布房源
@@ -129,5 +133,66 @@ public class HouseController {
                                       @RequestParam String status) {
         houseService.updateHouseStatus(houseId, status);
         return Result.success(null);
+    }
+
+    // ============================================================
+    // 推荐系统接口(FM + TensorFlow 训练)
+    // ============================================================
+
+    /**
+     * 个性化推荐(基于用户偏好 + TensorFlow FM 打分)
+     * Header X-User-Id 必传
+     */
+    @GetMapping("/recommend")
+    public Result<PageResult<HouseRecommendDTO>> recommend(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
+            @RequestParam(value = "pageNum", required = false) Integer pageNum,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        if (userId == null) {
+            return Result.error(401, "未登录,无法获取个性化推荐");
+        }
+        PageResult<HouseRecommendDTO> page = recommendationService.recommend(userId, pageNum, pageSize);
+        return Result.success(page);
+    }
+
+    /**
+     * 行为埋点上报(VIEW/CLICK/FAVORITE/ORDER/PAY)
+     * 用于训练数据收集,后续模型迭代会基于这些行为
+     */
+    @PostMapping("/behavior/track")
+    public Result<Void> trackBehavior(@Valid @RequestBody BehaviorTrackDTO trackDTO,
+                                       @RequestHeader(value = "X-User-Id", required = false) Long headerUserId) {
+        recommendationService.trackBehavior(trackDTO, headerUserId);
+        return Result.success(null);
+    }
+
+    /**
+     * 保存/更新用户偏好(用于推荐召回)
+     */
+    @PostMapping("/preference")
+    public Result<Void> savePreference(@Valid @RequestBody UserPreferenceDTO preferenceDTO,
+                                        @RequestHeader(value = "X-User-Id", required = false) Long headerUserId) {
+        recommendationService.savePreference(preferenceDTO, headerUserId);
+        return Result.success(null);
+    }
+
+    /**
+     * 查询当前用户偏好
+     */
+    @GetMapping("/preference")
+    public Result<UserPreferenceDTO> getPreference(
+            @RequestHeader(value = "X-User-Id", required = false) Long headerUserId) {
+        if (headerUserId == null) {
+            return Result.error(401, "未登录");
+        }
+        return Result.success(recommendationService.getPreference(headerUserId));
+    }
+
+    /**
+     * FM 模型信息(暴露 TensorFlow 训练元数据,让前端"看得见"算法)
+     */
+    @GetMapping("/recommend/model-info")
+    public Result<Map<String, Object>> modelInfo() {
+        return Result.success(fmModelLoader.getModelInfo());
     }
 }

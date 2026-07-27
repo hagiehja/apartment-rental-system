@@ -104,6 +104,10 @@
               <span v-if="house.status === 'RENTED'" class="status-badge rented">已租赁</span>
             </h3>
             <p class="house-location">📍 {{ house.city }} {{ house.district }}</p>
+            <p class="house-landlord" v-if="house.landlordName">
+              🔑 房东：
+              <span class="landlord-name" @click.stop="goToLandlord(house.landlordId)">{{ house.landlordName }}</span>
+            </p>
             <div class="house-tags">
               <span class="tag tag-primary">{{ house.rentType === 'WHOLE' ? '整租' : '合租' }}</span>
               <span class="tag tag-default">{{ house.roomCount }}室{{ house.hallCount }}厅</span>
@@ -241,6 +245,11 @@ export default {
     const goToDetail = (id) => {
       router.push(`/house/${id}`)
     }
+
+    // 查看房东的所有房源
+    const goToLandlord = (landlordId) => {
+      router.push(`/landlord/${landlordId}/houses`)
+    }
     
     // 格式化日期
     const formatDate = (dateStr) => {
@@ -271,6 +280,7 @@ export default {
       resetFilters,
       changePage,
       goToDetail,
+      goToLandlord,
       formatDate,
       handleImageError
     }
@@ -425,6 +435,26 @@ export default {
 .house-location {
   color: var(--text-secondary);
   margin-bottom: var(--spacing-sm);
+}
+
+.house-landlord {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.house-landlord .landlord-name {
+  color: var(--primary-color);
+  cursor: pointer;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f0f7ff;
+  transition: all 0.2s;
+}
+
+.house-landlord .landlord-name:hover {
+  background: #d6eaff;
 }
 
 .house-tags {

@@ -83,10 +83,10 @@
               <div class="signature-area mt-lg">
                 <div class="signature-party">
                   <h4>甲方签署</h4>
-                  <div class="signature-box" :class="{ signed: contract.landlordSignTime }">
-                    <template v-if="contract.landlordSignTime">
-                      <span class="signature">{{ contract.landlordName }}</span>
-                      <span class="sign-time">{{ formatDateTime(contract.landlordSignTime) }}</span>
+                  <div class="signature-box" :class="{ signed: contract.landlordSignedAt }">
+                    <template v-if="contract.landlordSignedAt">
+                      <span class="signature">{{ contract.landlordName || '房东' }}</span>
+                      <span class="sign-time">{{ formatDateTime(contract.landlordSignedAt) }}</span>
                     </template>
                     <template v-else>
                       <span class="pending">待签署</span>
@@ -95,10 +95,10 @@
                 </div>
                 <div class="signature-party">
                   <h4>乙方签署</h4>
-                  <div class="signature-box" :class="{ signed: contract.tenantSignTime }">
-                    <template v-if="contract.tenantSignTime">
-                      <span class="signature">{{ contract.tenantName }}</span>
-                      <span class="sign-time">{{ formatDateTime(contract.tenantSignTime) }}</span>
+                  <div class="signature-box" :class="{ signed: contract.tenantSignedAt }">
+                    <template v-if="contract.tenantSignedAt">
+                      <span class="signature">{{ contract.tenantName || '租客' }}</span>
+                      <span class="sign-time">{{ formatDateTime(contract.tenantSignedAt) }}</span>
                     </template>
                     <template v-else>
                       <span class="pending">待签署</span>
@@ -116,11 +116,11 @@
           <div class="card-body">
             <div class="info-row">
               <label>关联订单</label>
-              <router-link :to="`/order/${contract.orderNo}`">{{ contract.orderNo }}</router-link>
+              <router-link :to="`/order/${contract.orderNo}`">{{ contract.orderNo || contract.orderId }}</router-link>
             </div>
             <div class="info-row">
               <label>创建时间</label>
-              <span>{{ formatDateTime(contract.createTime) }}</span>
+              <span>{{ formatDateTime(contract.createdAt || contract.createTime) }}</span>
             </div>
           </div>
         </div>
@@ -323,17 +323,38 @@ export default {
       calculatingRefund.value = false
     }
     
+    // 全局 toast（同 request.js 风格）
+    function showToast(message, type = 'info') {
+      let toast = document.getElementById('contract-toast')
+      if (!toast) {
+        toast = document.createElement('div')
+        toast.id = 'contract-toast'
+        toast.style.cssText = [
+          'position:fixed','top:80px','left:50%','transform:translateX(-50%)',
+          'padding:12px 24px','border-radius:8px','font-size:14px','font-weight:500',
+          'box-shadow:0 8px 24px rgba(0,0,0,0.2)','z-index:9999',
+          'max-width:80vw','text-align:center','opacity:0','transition:opacity 0.3s','pointer-events:none'
+        ].join(';')
+        document.body.appendChild(toast)
+      }
+      toast.style.background = type === 'success' ? 'rgba(122,157,140,0.97)' : (type === 'error' ? 'rgba(217,142,142,0.97)' : 'rgba(0,0,0,0.8)')
+      toast.style.color = '#fff'
+      toast.textContent = message
+      toast.style.opacity = '1'
+      setTimeout(() => { toast.style.opacity = '0' }, 3000)
+    }
+
     // 签署合同
     const signing = ref(false)
     const handleSign = async () => {
       if (!confirm('确认签署此合同？签署后具有法律效力。')) return
-      
+
       signing.value = true
       try {
         // 获取用户信息
         const userInfoStr = localStorage.getItem('userInfo')
         if (!userInfoStr) {
-            alert('请先登录')
+            showToast('请先登录', 'error')
             router.push('/login')
             return
         }
@@ -352,11 +373,11 @@ export default {
         })
         // 刷新数据
         await loadContract()
-        alert('签署成功！')
+        showToast('签署成功！', 'success')
       } catch (error) {
-         if (!error.response || error.response.status !== 500) {
-           alert(error.response?.data?.message || error.message || '签署失败')
-         }
+        console.error('签署失败', error)
+        const msg = error.response?.data?.message || error.message || '签署失败'
+        showToast(msg, 'error')
       } finally {
         signing.value = false
       }

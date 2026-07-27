@@ -18,7 +18,7 @@ class HybridRecommendationScorerTest {
         HybridRecommendationScorer scorer = new HybridRecommendationScorer(
                 new RecommendationScorer(),
                 new FmFeatureBuilder(),
-                new FmScorer(FmModel.defaultModel())
+                new DeepFmScorer(wrap(FmModel.defaultModel()))
         );
 
         RecommendationScore score = scorer.score(
@@ -43,7 +43,7 @@ class HybridRecommendationScorerTest {
         );
 
         assertTrue(score.getScore() >= 0.0 && score.getScore() <= 100.0);
-        assertTrue(score.getReason().contains("fm_v2"));
+        assertTrue(score.getReason().contains("fm_v2") || score.getReason().contains("deepfm"));
     }
 
     @Test
@@ -51,7 +51,7 @@ class HybridRecommendationScorerTest {
         HybridRecommendationScorer scorer = new HybridRecommendationScorer(
                 new RecommendationScorer(),
                 new FmFeatureBuilder(),
-                new FmScorer(FmModel.defaultModel())
+                new DeepFmScorer(wrap(FmModel.defaultModel()))
         );
 
         RecommendationScore score = scorer.score(
@@ -64,6 +64,12 @@ class HybridRecommendationScorerTest {
         );
 
         assertTrue(score.getScore() > 0.0);
-        assertTrue(score.getReason().contains("fm_v2"));
+        assertTrue(score.getReason().contains("fm_v2") || score.getReason().contains("deepfm"));
+    }
+
+    /** Wrap an FmModel as a no-DNN DeepFmModel (backward compatible path). */
+    private static DeepFmModel wrap(FmModel fm) {
+        return new DeepFmModel(fm.getBias(), fm.getLinearWeights(), fm.getFactors(),
+                null, new double[0], 0.0);
     }
 }

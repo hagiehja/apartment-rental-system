@@ -205,23 +205,45 @@ export default {
     // 签署合同
     const handleSign = async (contract) => {
       if (!confirm('确认签署此合同？签署后具有法律效力。')) return
-      
+
       try {
         await signContract(contract.id, {
-          signature: '电子签名', 
+          signature: '电子签名',
           userId: currentUserId.value,
           userType: currentUserRole.value,
-          ipAddress: '127.0.0.1' 
+          ipAddress: '127.0.0.1'
         })
-        
+
         // 重新加载列表以获取最新状态
         await loadContracts()
-        
-        alert('合同签署成功！')
+
+        showToast('合同签署成功！', 'success')
       } catch (error) {
         console.error('签署失败', error)
-        alert(error.response?.data?.message || error.message || '签署失败')
+        const msg = error.response?.data?.message || error.message || '签署失败'
+        showToast(msg, 'error')
       }
+    }
+
+    // 全局 toast
+    function showToast(message, type = 'info') {
+      let toast = document.getElementById('contract-list-toast')
+      if (!toast) {
+        toast = document.createElement('div')
+        toast.id = 'contract-list-toast'
+        toast.style.cssText = [
+          'position:fixed','top:80px','left:50%','transform:translateX(-50%)',
+          'padding:12px 24px','border-radius:8px','font-size:14px','font-weight:500',
+          'box-shadow:0 8px 24px rgba(0,0,0,0.2)','z-index:9999',
+          'max-width:80vw','text-align:center','opacity:0','transition:opacity 0.3s','pointer-events:none'
+        ].join(';')
+        document.body.appendChild(toast)
+      }
+      toast.style.background = type === 'success' ? 'rgba(122,157,140,0.97)' : (type === 'error' ? 'rgba(217,142,142,0.97)' : 'rgba(0,0,0,0.8)')
+      toast.style.color = '#fff'
+      toast.textContent = message
+      toast.style.opacity = '1'
+      setTimeout(() => { toast.style.opacity = '0' }, 3000)
     }
     
     // 下载合同URL

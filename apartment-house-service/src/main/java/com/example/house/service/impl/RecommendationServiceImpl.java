@@ -84,6 +84,27 @@ public class RecommendationServiceImpl implements RecommendationService {
     }
 
     @Override
+    public UserPreferenceDTO getPreference(Long userId) {
+        UserPreference preference = userId == null ? null : userPreferenceMapper.selectById(userId);
+        UserPreferenceDTO dto = new UserPreferenceDTO();
+        if (preference == null) {
+            dto.setUserId(userId);
+            return dto;
+        }
+        dto.setUserId(preference.getUserId());
+        dto.setCity(preference.getCity());
+        dto.setDistrict(preference.getDistrict());
+        dto.setMinPrice(preference.getMinPrice());
+        dto.setMaxPrice(preference.getMaxPrice());
+        dto.setRoomCount(preference.getRoomCount());
+        dto.setMinArea(preference.getMinArea());
+        dto.setMaxArea(preference.getMaxArea());
+        dto.setRentType(preference.getRentType());
+        dto.setCommuteAddress(preference.getCommuteAddress());
+        return dto;
+    }
+
+    @Override
     public PageResult<HouseRecommendDTO> recommend(Long userId, Integer pageNum, Integer pageSize) {
         int currentPage = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int currentSize = pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, 50);

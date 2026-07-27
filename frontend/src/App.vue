@@ -3,23 +3,33 @@
     <!-- 顶部导航栏 -->
     <header class="header" v-if="!isLoginPage">
       <div class="container header-inner">
-        <router-link to="/" class="logo">🏠 寓见云 · SmartLiving</router-link>
-        
+        <router-link :to="user && user.role === 'ADMIN' ? '/admin' : '/'" class="logo">🏠 寓见云 · SmartLiving</router-link>
+
         <nav class="nav">
-          <router-link to="/houses" class="nav-link">房源列表</router-link>
-          <template v-if="user">
-            <router-link v-if="user.role === 'LANDLORD'" to="/my-houses" class="nav-link">我的房源</router-link>
-            <router-link :to="user.role === 'LANDLORD' ? '/landlord/orders' : '/orders'" class="nav-link">
-              {{ user.role === 'LANDLORD' ? '我的租客订单' : '我的订单' }}
-            </router-link>
-            <router-link to="/contracts" class="nav-link">
-              {{ user.role === 'LANDLORD' ? '租约合同' : '我的合同' }}
-            </router-link>
-            <router-link to="/wallet" class="nav-link">钱包</router-link>
-            <router-link v-if="user.role !== 'TENANT'" to="/notifications" class="nav-link notification-link">
-              消息
-              <span v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-            </router-link>
+          <!-- 管理员:只显示管理后台入口 -->
+          <template v-if="user && user.role === 'ADMIN'">
+            <router-link to="/admin" class="nav-link admin-link">🛡️ 管理后台</router-link>
+            <router-link to="/admin/users" class="nav-link">用户管理</router-link>
+            <router-link to="/admin/houses" class="nav-link">房源管理</router-link>
+          </template>
+          <!-- 其他角色:显示完整业务导航 -->
+          <template v-else>
+            <router-link to="/houses" class="nav-link">房源列表</router-link>
+            <router-link v-if="user && user.role === 'TENANT'" to="/recommend" class="nav-link recommend-link">🤖 智能推荐</router-link>
+            <template v-if="user">
+              <router-link v-if="user.role === 'LANDLORD'" to="/my-houses" class="nav-link">我的房源</router-link>
+              <router-link :to="user.role === 'LANDLORD' ? '/landlord/orders' : '/orders'" class="nav-link">
+                {{ user.role === 'LANDLORD' ? '我的租客订单' : '我的订单' }}
+              </router-link>
+              <router-link to="/contracts" class="nav-link">
+                {{ user.role === 'LANDLORD' ? '租约合同' : '我的合同' }}
+              </router-link>
+              <router-link to="/wallet" class="nav-link">钱包</router-link>
+              <router-link v-if="user.role !== 'TENANT'" to="/notifications" class="nav-link notification-link">
+                消息
+                <span v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+              </router-link>
+            </template>
           </template>
         </nav>
         
@@ -178,6 +188,27 @@ export default {
 .nav-link.router-link-active {
   color: var(--primary-color);
   background: var(--primary-light);
+}
+
+.recommend-link {
+  background: linear-gradient(135deg, #7CB342 0%, #558B2F 100%);
+  color: #fff !important;
+  font-weight: 600;
+}
+.recommend-link:hover {
+  background: linear-gradient(135deg, #558B2F 0%, #33691E 100%);
+  color: #fff !important;
+}
+
+.admin-link {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+.admin-link:hover,
+.admin-link.router-link-active {
+  background: linear-gradient(135deg, #5568d3 0%, #65439a 100%) !important;
+  color: #fff !important;
 }
 
 .notification-link {

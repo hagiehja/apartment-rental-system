@@ -97,6 +97,17 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- ========================================================
+             dynamic-datasource - 读写分离(基于 AbstractRoutingDataSource 动态路由)
+             配合 @DS("slave") 注解,读走从库,写走主库(默认)
+             与 MyBatis-Plus 同生态(baomidou),零冲突
+             ======================================================== -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
+            <version>4.3.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>

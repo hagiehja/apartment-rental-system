@@ -33,6 +33,8 @@ spring.data.redis:
   sentinel:
     master: mymaster
     nodes: 192.168.24.129:26379,192.168.24.129:26380,192.168.24.129:26381
+    password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+  password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
   database: 2  # 支付服务使用database 2
   timeout: 3000ms
   lettuce:
@@ -51,6 +53,8 @@ spring.redisson:
         - "redis://192.168.24.129:26379"
         - "redis://192.168.24.129:26380"
         - "redis://192.168.24.129:26381"
+      sentinelPassword: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
       database: 2
       connectionPoolSize: 64
       connectionMinimumIdleSize: 10
@@ -61,7 +65,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: always

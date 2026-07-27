@@ -1,5 +1,6 @@
 package com.example.house.service.impl;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.house.dto.*;
@@ -35,6 +36,7 @@ public class HouseServiceImpl implements HouseService {
 
     private final HouseMapper houseMapper;
     private final HouseImageMapper houseImageMapper;
+    private final com.example.house.mapper.UserMapper userMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -102,6 +104,7 @@ public class HouseServiceImpl implements HouseService {
     @Override
     // 房源列表缓存：以查询参数的 hashCode 作为缓存 key，TTL 5 分钟（在 RedisCacheConfig 中设置）
     @Cacheable(value = "house:list", key = "#queryDTO.hashCode()")
+    @DS("slave")   // 读走从库(读写分离),写操作不加注解默认走主库
     public PageResult<HouseListDTO> listHouses(HouseQueryDTO queryDTO) {
         // 构建查询条件
         QueryWrapper<House> queryWrapper = new QueryWrapper<>();
@@ -111,6 +114,10 @@ public class HouseServiceImpl implements HouseService {
         }
         if (StringUtils.hasText(queryDTO.getDistrict())) {
             queryWrapper.like("district", queryDTO.getDistrict());
+        }
+        // 按房东筛选 (查看某房东的全部房源)
+        if (queryDTO.getLandlordId() != null) {
+            queryWrapper.eq("landlord_id", queryDTO.getLandlordId());
         }
         if (StringUtils.hasText(queryDTO.getRentType())) {
             queryWrapper.eq("rent_type", queryDTO.getRentType());
@@ -150,10 +157,48 @@ public class HouseServiceImpl implements HouseService {
         Page<House> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
         Page<House> housePage = houseMapper.selectPage(page, queryWrapper);
 
-        // 转换为DTO
+        // ===== [N+1 修复] 批量预加载封面图,避免每条房源单独查一次 =====
+        // 旧逻辑:每条房源单独 SELECT cover_image WHERE house_id=? → pageSize=10 产生 11 次 SQL
+        // 新逻辑:1 次 IN 查询拿到全部封面图,内存映射,O(1) 取用
+        List<Long> houseIds = housePage.getRecords().stream()
+                .map(House::getHouseId).collect(Collectors.toList());
+        java.util.Map<Long, String> coverImageMap = java.util.Collections.emptyMap();
+        if (!houseIds.isEmpty()) {
+            QueryWrapper<HouseImage> imageWrapper = new QueryWrapper<>();
+            imageWrapper.in("house_id", houseIds).eq("is_cover", 1);
+            coverImageMap = houseImageMapper.selectList(imageWrapper).stream()
+                    .collect(Collectors.toMap(HouseImage::getHouseId,
+                            HouseImage::getImageUrl, (a, b) -> a));
+        }
+
+        // 转换为DTO(封面图从预加载 Map 取,零额外 SQL)
+        final java.util.Map<Long, String> finalCoverMap = coverImageMap;
+
+        // ===== 批量预加载房东信息 (避免 N+1) =====
+        List<Long> landlordIds = housePage.getRecords().stream()
+                .map(House::getLandlordId).distinct().collect(Collectors.toList());
+        java.util.Map<Long, java.util.Map<String, Object>> landlordMap = java.util.Collections.emptyMap();
+        if (!landlordIds.isEmpty()) {
+            landlordMap = new java.util.HashMap<>();
+            for (java.util.Map<String, Object> u : userMapper.selectBatchUserInfo(landlordIds)) {
+                Object idObj = u.get("userId");
+                if (idObj instanceof Number) {
+                    landlordMap.put(((Number) idObj).longValue(), u);
+                }
+            }
+        }
+        final java.util.Map<Long, java.util.Map<String, Object>> finalLandlordMap = landlordMap;
+
         List<HouseListDTO> list = housePage.getRecords().stream().map(house -> {
             HouseListDTO dto = new HouseListDTO();
             dto.setHouseId(house.getHouseId());
+            dto.setLandlordId(house.getLandlordId());
+            // 填入房东名 (找不到就显示默认)
+            java.util.Map<String, Object> landlord = finalLandlordMap.get(house.getLandlordId());
+            if (landlord != null) {
+                dto.setLandlordName(landlord.get("username") == null ? null
+                        : landlord.get("username").toString());
+            }
             dto.setTitle(house.getTitle());
             dto.setCity(house.getCity());
             dto.setDistrict(house.getDistrict());
@@ -165,16 +210,7 @@ public class HouseServiceImpl implements HouseService {
             dto.setViewCount(house.getViewCount());
             dto.setCreateTime(house.getCreateTime());
             dto.setStatus(house.getStatus());
-
-            // 获取封面图
-            QueryWrapper<HouseImage> imageWrapper = new QueryWrapper<>();
-            imageWrapper.eq("house_id", house.getHouseId())
-                    .eq("is_cover", 1);
-            HouseImage coverImage = houseImageMapper.selectOne(imageWrapper);
-            if (coverImage != null) {
-                dto.setCoverImage(coverImage.getImageUrl());
-            }
-
+            dto.setCoverImage(finalCoverMap.get(house.getHouseId()));
             return dto;
         }).collect(Collectors.toList());
 
@@ -186,6 +222,8 @@ public class HouseServiceImpl implements HouseService {
     // 房源详情缓存：以 houseId 为 key，TTL 10 分钟（在 RedisCacheConfig 中设置）
     // 命中缓存时直接返回，不再查库；未命中时查库并写入缓存
     @Cacheable(value = "house:detail", key = "#houseId")
+    // 注意:此方法含 viewCount+1 的写操作,不能加 @DS("slave")(从库 read_only=ON 会失败)
+    // 故默认走主库。仅 listHouses(高频纯读)走从库,实现读写分离的核心价值
     public HouseDetailDTO getHouseDetail(Long houseId) {
         House house = houseMapper.selectById(houseId);
         if (house == null) {
@@ -201,6 +239,15 @@ public class HouseServiceImpl implements HouseService {
         HouseDetailDTO dto = new HouseDetailDTO();
         dto.setHouseId(house.getHouseId());
         dto.setLandlordId(house.getLandlordId());
+        // ===== 填入房东信息 =====
+        java.util.Map<String, Object> landlord = userMapper.selectUserInfo(house.getLandlordId());
+        if (landlord != null) {
+            dto.setLandlordName(landlord.get("username") == null ? null
+                    : landlord.get("username").toString());
+            dto.setLandlordPhone(landlord.get("phone") == null ? null
+                    : landlord.get("phone").toString());
+        }
+        dto.setLandlordHouseCount(userMapper.countHousesByLandlord(house.getLandlordId()));
         dto.setTitle(house.getTitle());
         dto.setDescription(house.getDescription());
         dto.setProvince(house.getProvince());

@@ -3,25 +3,165 @@ package com.example.user.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.user.dto.UserInfoDTO;
 import com.example.user.dto.UserLoginDTO;
+import com.example.user.dto.UserRegisterDTO;
 import com.example.user.entity.User;
 import com.example.user.mapper.UserMapper;
 import com.example.user.utils.JWTUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService implements UserDetailsService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtils jwtUtils;
+
+    /**
+     * 用户注册
+     * - 用户名/手机号唯一性校验
+     * - 密码 BCrypt 加密
+     * - 角色只能是 TENANT 或 LANDLORD
+     */
+    public UserInfoDTO register(UserRegisterDTO dto) {
+        // 1. 用户名唯一性校验
+        Long usernameCount = userMapper.selectCount(
+                new QueryWrapper<User>().eq("username", dto.getUsername()));
+        if (usernameCount != null && usernameCount > 0) {
+            throw new IllegalArgumentException("用户名已被使用,请更换");
+        }
+
+        // 2. 手机号唯一性校验
+        Long phoneCount = userMapper.selectCount(
+                new QueryWrapper<User>().eq("phone", dto.getPhone()));
+        if (phoneCount != null && phoneCount > 0) {
+            throw new IllegalArgumentException("手机号已注册");
+        }
+
+        // 3. 构造实体并加密密码
+        User user = new User();
+        user.setUsername(dto.getUsername());
+        user.setPhone(dto.getPhone());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setRole(dto.getRole());
+        user.setCreate_time(LocalDateTime.now());
+        user.setUpdate_time(LocalDateTime.now());
+
+        userMapper.insert(user);
+
+        // 4. 构造返回 DTO (含 token, 注册后可直接登录)
+        UserInfoDTO info = new UserInfoDTO();
+        info.setUserId(user.getUserId());
+        info.setUsername(user.getUsername());
+        info.setPhone(user.getPhone());
+        info.setRole(user.getRole());
+        info.setToken(jwtUtils.generateToken(info));
+        return info;
+    }
+
+    /**
+     * 批量查询用户简要信息(供其他服务调用, 例如房源服务展示房东名)
+     */
+    public java.util.Map<Long, java.util.Map<String, Object>> batchUserInfo(java.util.List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) return java.util.Collections.emptyMap();
+        java.util.List<User> users = userMapper.selectList(
+                new QueryWrapper<User>().in("user_id", userIds));
+        java.util.Map<Long, java.util.Map<String, Object>> result = new java.util.HashMap<>();
+        for (User u : users) {
+            java.util.Map<String, Object> m = new java.util.HashMap<>();
+            m.put("userId", u.getUserId());
+            m.put("username", u.getUsername());
+            m.put("phone", u.getPhone());
+            m.put("role", u.getRole());
+            result.put(u.getUserId(), m);
+        }
+        return result;
+    }
+
+    /**
+     * 角色统计 (返回各角色用户数)
+     */
+    public java.util.Map<String, Object> getRoleStats() {
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("totalUsers", userMapper.selectCount(null));
+        stats.put("landlords", userMapper.selectCount(
+                new QueryWrapper<User>().eq("role", "LANDLORD")));
+        stats.put("tenants", userMapper.selectCount(
+                new QueryWrapper<User>().eq("role", "TENANT")));
+        stats.put("admins", userMapper.selectCount(
+                new QueryWrapper<User>().eq("role", "ADMIN")));
+        return stats;
+    }
+
+    /**
+     * 判断指定用户是否是管理员
+     */
+    public boolean isAdmin(Long userId) {
+        if (userId == null) return false;
+        User u = userMapper.selectById(userId);
+        return u != null && "ADMIN".equals(u.getRole());
+    }
+
+    /**
+     * 管理员: 分页查询用户列表 (含 role / keyword 过滤)
+     * 返回字段: total / pageNum / pageSize / records
+     */
+    public java.util.Map<String, Object> adminListUsers(String role, String keyword,
+                                                       Integer pageNum, Integer pageSize) {
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        if (role != null && !role.isEmpty()) {
+            qw.eq("role", role);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            qw.and(w -> w.like("username", keyword).or().like("phone", keyword));
+        }
+        qw.orderByDesc("user_id");
+
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<User> page =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<User> result = userMapper.selectPage(page, qw);
+
+        java.util.Map<String, Object> resp = new java.util.HashMap<>();
+        resp.put("total", result.getTotal());
+        resp.put("pageNum", pageNum);
+        resp.put("pageSize", pageSize);
+
+        java.util.List<java.util.Map<String, Object>> records = new java.util.ArrayList<>();
+        for (User u : result.getRecords()) {
+            java.util.Map<String, Object> m = new java.util.HashMap<>();
+            m.put("userId", u.getUserId());
+            m.put("username", u.getUsername());
+            m.put("phone", u.getPhone());
+            m.put("role", u.getRole());
+            m.put("createTime", u.getCreate_time());
+            records.add(m);
+        }
+        resp.put("records", records);
+        return resp;
+    }
+
+    /**
+     * 管理员: 修改用户角色
+     */
+    public void adminUpdateRole(Long targetUserId, String newRole) {
+        User u = userMapper.selectById(targetUserId);
+        if (u == null) {
+            throw new RuntimeException("目标用户不存在");
+        }
+        u.setRole(newRole);
+        u.setUpdate_time(java.time.LocalDateTime.now());
+        userMapper.updateById(u);
+    }
 
     /**
      * 用户登录方法
@@ -32,9 +172,9 @@ public class UserService implements UserDetailsService {
      */
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public UserInfoDTO login(UserLoginDTO loginDTO) {
-        System.out.println("========== 登录调试信息 ==========");
-        System.out.println("登录账号: " + loginDTO.getAccount());
-        System.out.println("登录密码: " + loginDTO.getPassword());
+        // [VULN-05 修复] 移除所有明文密码日志,避免泄露到日志系统
+        // 只记录账号(便于审计),不记录密码
+        log.info("登录尝试 account={}", loginDTO.getAccount());
 
         // 根据账号查询用户（支持用户名或手机号）
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -46,20 +186,15 @@ public class UserService implements UserDetailsService {
 
         // 用户不存在
         if (user == null) {
-            System.out.println("❌ 用户不存在: " + loginDTO.getAccount());
+            log.warn("登录失败 用户不存在 account={}", loginDTO.getAccount());
             return null;
         }
 
-        System.out.println("✅ 找到用户: " + user.getUsername());
-        System.out
-                .println("数据库密码(前30位): " + user.getPassword().substring(0, Math.min(30, user.getPassword().length())));
-        System.out.println("密码是否以$2a开头: " + user.getPassword().startsWith("$2a"));
-
-        // 验证密码
+        // 验证密码 (BCrypt 比对,不记录明文)
         boolean passwordMatches = passwordEncoder.matches(loginDTO.getPassword(), user.getPassword());
-        System.out.println("密码匹配结果: " + (passwordMatches ? "✅ 成功" : "❌ 失败"));
 
         if (!passwordMatches) {
+            log.warn("登录失败 密码错误 account={}", loginDTO.getAccount());
             return null;
         }
 
@@ -88,6 +223,11 @@ public class UserService implements UserDetailsService {
         queryWrapper.eq("username", username)
                 .or()
                 .eq("phone", username);
+
+        // 兼容JWTUtils将userId放入sub的情况:如果传入的是纯数字,也尝试按userId查
+        if (username != null && username.matches("\\d+")) {
+            queryWrapper.or().eq("user_id", Long.parseLong(username));
+        }
 
         User user = userMapper.selectOne(queryWrapper);
 

@@ -9,12 +9,19 @@ x-app-common: &app-common
   restart: unless-stopped
   extra_hosts:
     - "host.docker.internal:host-gateway"
+  # 日志限制: 每个容器最多 3 个文件 × 50MB = 150MB 上限
+  # 防止高并发下 stdout 日志把磁盘吃满 (上次磁盘使用率到 96%)
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
   healthcheck:
     test: ["CMD-SHELL", "curl -fsS http://localhost:$${SERVER_PORT:-8080}/actuator/health || exit 1"]
-    interval: 10s
-    timeout: 3s
+    interval: 15s
+    timeout: 10s
     retries: 5
-    start_period: 60s
+    start_period: 90s
 
 services:
   nginx:
@@ -24,6 +31,7 @@ services:
       - "${HOST_HTTP_PORT:-80}:80"
     volumes:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/ops:/usr/share/nginx/html/ops:ro
     depends_on:
       - apartment-gateway
     healthcheck:

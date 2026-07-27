@@ -31,7 +31,13 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: "*"
+            # [VULN-06 修复] CORS 白名单, 不再用 "*" 配合 allowCredentials
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://localhost:8080"
+              - "http://127.0.0.1:5173"
+              - "http://192.168.24.129"
+              - "http://192.168.24.129:80"
             allowedMethods:
               - GET
               - POST
@@ -140,7 +146,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: always

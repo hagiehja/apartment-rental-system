@@ -2,10 +2,16 @@ package com.example.user.controller;
 
 import com.example.user.dto.UserInfoDTO;
 import com.example.user.dto.UserLoginDTO;
+import com.example.user.dto.UserRegisterDTO;
 import com.example.user.model.Result;
 import com.example.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
@@ -27,30 +33,91 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result<UserInfoDTO> login(@RequestBody UserLoginDTO loginDTO) {
-        System.out.println("========== Controller 收到登录请求 ==========");
-        System.out.println("请求参数: " + loginDTO);
-
         UserInfoDTO userInfo = userService.login(loginDTO);
-
         if (userInfo == null) {
-            System.out.println("❌ 登录失败：返回错误响应");
-            Result<UserInfoDTO> errorResult = Result.error("用户名或密码错误");
-            System.out.println("错误响应: " + errorResult);
-            return errorResult;
+            return Result.error("用户名或密码错误");
         }
+        return Result.success(userInfo);
+    }
 
-        System.out.println("✅ 登录成功！用户信息:");
-        System.out.println("  - userId: " + userInfo.getUserId());
-        System.out.println("  - username: " + userInfo.getUsername());
-        System.out.println("  - phone: " + userInfo.getPhone());
-        System.out.println("  - role: " + userInfo.getRole());
-        System.out.println("  - token: " + (userInfo.getToken() != null
-                ? userInfo.getToken().substring(0, Math.min(30, userInfo.getToken().length())) + "..."
-                : "null"));
+    /**
+     * 用户注册
+     * 支持 TENANT(租客) / LANDLORD(房东) 两种角色
+     */
+    @PostMapping("/register")
+    public Result<UserInfoDTO> register(@Valid @RequestBody UserRegisterDTO registerDTO) {
+        try {
+            UserInfoDTO userInfo = userService.register(registerDTO);
+            return Result.success(userInfo);
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("注册失败,请稍后再试");
+        }
+    }
 
-        Result<UserInfoDTO> successResult = Result.success(userInfo);
-        System.out.println("成功响应: " + successResult);
-        return successResult;
+    /**
+     * 批量查询用户信息 (给其他服务调用, 例如房源服务要显示房东名)
+     * GET /user/batch?ids=1,2,3
+     */
+    @GetMapping("/batch")
+    public Result<Map<Long, Map<String, Object>>> batchUserInfo(@RequestParam("ids") List<Long> ids) {
+        return Result.success(userService.batchUserInfo(ids));
+    }
+
+    /**
+     * 统计接口: 角色分布
+     */
+    @GetMapping("/stats")
+    public Result<Map<String, Object>> stats() {
+        Map<String, Object> stats = userService.getRoleStats();
+        return Result.success(stats);
+    }
+
+    /**
+     * 管理员接口: 分页查询全部用户
+     * 需要 X-User-Id 请求头,且该用户角色必须是 ADMIN
+     * 支持 role / keyword 过滤
+     */
+    @GetMapping("/admin/list")
+    public Result<Map<String, Object>> adminListUsers(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
+            @RequestParam(value = "role", required = false) String role,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize) {
+        // 权限校验:必须是 ADMIN
+        if (userId == null) {
+            return Result.error("未登录");
+        }
+        if (!userService.isAdmin(userId)) {
+            return Result.error("无权限访问管理后台");
+        }
+        Map<String, Object> result = userService.adminListUsers(role, keyword, pageNum, pageSize);
+        return Result.success(result);
+    }
+
+    /**
+     * 管理员接口: 修改用户角色
+     */
+    @PutMapping("/admin/{targetUserId}/role")
+    public Result<Void> adminUpdateUserRole(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
+            @PathVariable("targetUserId") Long targetUserId,
+            @RequestBody java.util.Map<String, String> body) {
+        if (userId == null) {
+            return Result.error("未登录");
+        }
+        if (!userService.isAdmin(userId)) {
+            return Result.error("无权限访问管理后台");
+        }
+        String newRole = body.get("role");
+        if (!"TENANT".equals(newRole) && !"LANDLORD".equals(newRole) && !"ADMIN".equals(newRole)) {
+            return Result.error("角色只能为 TENANT / LANDLORD / ADMIN");
+        }
+        userService.adminUpdateRole(targetUserId, newRole);
+        return Result.success(null);
     }
 }
 

@@ -14,6 +14,8 @@ public class HouseQueryDTO implements Serializable {
 
     private String district; // 区县
 
+    private Long landlordId; // 房东ID (按房东筛选其所有房源)
+
     private String rentType; // 出租类型
 
     private BigDecimal minPrice; // 最低价格

@@ -30,12 +30,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
-            if (jwtUtil.validateToken(token)) {
-                String username = jwtUtil.getUsername(token);
-                UserDetails userDetails = userService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null,
-                        userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(auth);
+            try {
+                if (jwtUtil.validateToken(token)) {
+                    String username = jwtUtil.getUsername(token);
+                    UserDetails userDetails = userService.loadUserByUsername(username);
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null,
+                            userDetails.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (Exception e) {
+                // JWT解析失败或用户不存在时不阻断请求链
+                // (网关层nginx+jwt-auth已做认证,X-User-Id头已设置)
+                // 这里仅做尽力而为的认证,失败则按匿名处理
+                logger.debug("JwtAuthenticationFilter skipped auth setup due to: " + e.getMessage());
             }
         }
         filterChain.doFilter(request, response);
