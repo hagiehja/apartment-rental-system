@@ -1,5 +1,6 @@
 package com.example.house.service.impl;
 
+import com.example.common.enums.HouseStatus;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.house.dto.BehaviorTrackDTO;
@@ -112,7 +113,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         UserPreferenceSnapshot snapshot = toSnapshot(preference);
 
         QueryWrapper<House> queryWrapper = new QueryWrapper<>();
-        queryWrapper.in("status", "AVAILABLE", "RENTED");
+        queryWrapper.in("status", HouseStatus.AVAILABLE.name(), HouseStatus.RENTED.name());
         if (preference != null) {
             if (StringUtils.hasText(preference.getCity())) {
                 queryWrapper.eq("city", preference.getCity());

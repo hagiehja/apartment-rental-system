@@ -1,6 +1,8 @@
 package com.example.user.service;
 
+import com.example.common.exception.BusinessException;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.common.enums.UserRole;
 import com.example.user.dto.UserInfoDTO;
 import com.example.user.dto.UserLoginDTO;
 import com.example.user.dto.UserRegisterDTO;
@@ -54,8 +56,8 @@ public class UserService implements UserDetailsService {
         user.setPhone(dto.getPhone());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setRole(dto.getRole());
-        user.setCreate_time(LocalDateTime.now());
-        user.setUpdate_time(LocalDateTime.now());
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
 
         userMapper.insert(user);
 
@@ -72,18 +74,18 @@ public class UserService implements UserDetailsService {
     /**
      * 批量查询用户简要信息(供其他服务调用, 例如房源服务展示房东名)
      */
-    public java.util.Map<Long, java.util.Map<String, Object>> batchUserInfo(java.util.List<Long> userIds) {
+    public java.util.Map<Long, com.example.user.vo.UserBriefVO> batchUserInfo(java.util.List<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) return java.util.Collections.emptyMap();
         java.util.List<User> users = userMapper.selectList(
                 new QueryWrapper<User>().in("user_id", userIds));
-        java.util.Map<Long, java.util.Map<String, Object>> result = new java.util.HashMap<>();
+        java.util.Map<Long, com.example.user.vo.UserBriefVO> result = new java.util.HashMap<>();
         for (User u : users) {
-            java.util.Map<String, Object> m = new java.util.HashMap<>();
-            m.put("userId", u.getUserId());
-            m.put("username", u.getUsername());
-            m.put("phone", u.getPhone());
-            m.put("role", u.getRole());
-            result.put(u.getUserId(), m);
+            com.example.user.vo.UserBriefVO vo = new com.example.user.vo.UserBriefVO();
+            vo.setUserId(u.getUserId());
+            vo.setUsername(u.getUsername());
+            vo.setPhone(u.getPhone());
+            vo.setRole(u.getRole());
+            result.put(u.getUserId(), vo);
         }
         return result;
     }
@@ -91,15 +93,15 @@ public class UserService implements UserDetailsService {
     /**
      * 角色统计 (返回各角色用户数)
      */
-    public java.util.Map<String, Object> getRoleStats() {
-        java.util.Map<String, Object> stats = new java.util.HashMap<>();
-        stats.put("totalUsers", userMapper.selectCount(null));
-        stats.put("landlords", userMapper.selectCount(
-                new QueryWrapper<User>().eq("role", "LANDLORD")));
-        stats.put("tenants", userMapper.selectCount(
-                new QueryWrapper<User>().eq("role", "TENANT")));
-        stats.put("admins", userMapper.selectCount(
-                new QueryWrapper<User>().eq("role", "ADMIN")));
+    public com.example.user.vo.RoleStatsVO getRoleStats() {
+        com.example.user.vo.RoleStatsVO stats = new com.example.user.vo.RoleStatsVO();
+        stats.setTotalUsers(userMapper.selectCount(null));
+        stats.setLandlords(userMapper.selectCount(
+                new QueryWrapper<User>().eq("role", UserRole.LANDLORD.name())));
+        stats.setTenants(userMapper.selectCount(
+                new QueryWrapper<User>().eq("role", UserRole.TENANT.name())));
+        stats.setAdmins(userMapper.selectCount(
+                new QueryWrapper<User>().eq("role", UserRole.ADMIN.name())));
         return stats;
     }
 
@@ -109,14 +111,14 @@ public class UserService implements UserDetailsService {
     public boolean isAdmin(Long userId) {
         if (userId == null) return false;
         User u = userMapper.selectById(userId);
-        return u != null && "ADMIN".equals(u.getRole());
+        return u != null && UserRole.ADMIN.name().equals(u.getRole());
     }
 
     /**
      * 管理员: 分页查询用户列表 (含 role / keyword 过滤)
      * 返回字段: total / pageNum / pageSize / records
      */
-    public java.util.Map<String, Object> adminListUsers(String role, String keyword,
+    public com.example.common.api.PageResult<com.example.user.vo.UserAdminVO> adminListUsers(String role, String keyword,
                                                        Integer pageNum, Integer pageSize) {
         QueryWrapper<User> qw = new QueryWrapper<>();
         if (role != null && !role.isEmpty()) {
@@ -131,23 +133,17 @@ public class UserService implements UserDetailsService {
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize);
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<User> result = userMapper.selectPage(page, qw);
 
-        java.util.Map<String, Object> resp = new java.util.HashMap<>();
-        resp.put("total", result.getTotal());
-        resp.put("pageNum", pageNum);
-        resp.put("pageSize", pageSize);
-
-        java.util.List<java.util.Map<String, Object>> records = new java.util.ArrayList<>();
+        java.util.List<com.example.user.vo.UserAdminVO> records = new java.util.ArrayList<>();
         for (User u : result.getRecords()) {
-            java.util.Map<String, Object> m = new java.util.HashMap<>();
-            m.put("userId", u.getUserId());
-            m.put("username", u.getUsername());
-            m.put("phone", u.getPhone());
-            m.put("role", u.getRole());
-            m.put("createTime", u.getCreate_time());
-            records.add(m);
+            com.example.user.vo.UserAdminVO vo = new com.example.user.vo.UserAdminVO();
+            vo.setUserId(u.getUserId());
+            vo.setUsername(u.getUsername());
+            vo.setPhone(u.getPhone());
+            vo.setRole(u.getRole());
+            vo.setCreateTime(u.getCreateTime());
+            records.add(vo);
         }
-        resp.put("records", records);
-        return resp;
+        return new com.example.common.api.PageResult<>(result.getTotal(), pageNum, pageSize, records);
     }
 
     /**
@@ -156,10 +152,10 @@ public class UserService implements UserDetailsService {
     public void adminUpdateRole(Long targetUserId, String newRole) {
         User u = userMapper.selectById(targetUserId);
         if (u == null) {
-            throw new RuntimeException("目标用户不存在");
+            throw new BusinessException("目标用户不存在");
         }
         u.setRole(newRole);
-        u.setUpdate_time(java.time.LocalDateTime.now());
+        u.setUpdateTime(java.time.LocalDateTime.now());
         userMapper.updateById(u);
     }
 

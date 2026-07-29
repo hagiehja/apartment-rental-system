@@ -1,7 +1,7 @@
 package com.example.contract.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.example.contract.common.Result;
+import com.example.common.api.Result;
 import com.example.contract.dto.SignContractDTO;
 import com.example.contract.entity.Contract;
 import com.example.contract.service.ContractService;

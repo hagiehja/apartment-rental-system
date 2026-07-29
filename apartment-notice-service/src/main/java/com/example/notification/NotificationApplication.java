@@ -9,7 +9,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * 通知服务启动类
  */
 @EnableDiscoveryClient
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example.notification", "com.example.common"})
 @MapperScan("com.example.notification.mapper")
 public class NotificationApplication {
 

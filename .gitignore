@@ -38,3 +38,10 @@ NUL
 *.bak.*
 deploy/fix/
 **/NUL
+
+# 论文/实验相关文件(不公开)
+experiments/
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
+docs/STARTUP-GUIDE.md

@@ -17,6 +17,12 @@
     </properties>
 
     <dependencies>
+        <!-- 公共模块:统一 Result / GlobalExceptionHandler / BusinessException -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>apartment-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- MyBatis Plus - Spring Boot 3.x 专用版本 -->
         <dependency>
             <groupId>com.baomidou</groupId>

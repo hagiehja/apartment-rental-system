@@ -2,7 +2,7 @@ package com.example.house.controller;
 
 import com.example.house.dto.*;
 import com.example.house.model.PageResult;
-import com.example.house.model.Result;
+import com.example.common.api.Result;
 import com.example.house.recommendation.fm.FmModelLoader;
 import com.example.house.service.HouseService;
 import com.example.house.service.RecommendationService;

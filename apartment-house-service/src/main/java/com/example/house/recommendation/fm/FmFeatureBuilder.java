@@ -1,5 +1,6 @@
 package com.example.house.recommendation.fm;
 
+import com.example.common.enums.HouseStatus;
 import com.example.house.recommendation.RecommendationCandidate;
 import com.example.house.recommendation.UserPreferenceSnapshot;
 import org.springframework.stereotype.Component;
@@ -95,9 +96,9 @@ public class FmFeatureBuilder {
     }
 
     private void addStatusFeature(Map<String, Double> features, RecommendationCandidate candidate) {
-        if (Objects.equals("AVAILABLE", candidate.getStatus())) {
+        if (Objects.equals(HouseStatus.AVAILABLE.name(), candidate.getStatus())) {
             features.put("status.available", 1.0);
-        } else if (Objects.equals("RENTED", candidate.getStatus())) {
+        } else if (Objects.equals(HouseStatus.RENTED.name(), candidate.getStatus())) {
             features.put("status.rented", 1.0);
         } else if (StringUtils.hasText(candidate.getStatus())) {
             features.put("status.other", 1.0);

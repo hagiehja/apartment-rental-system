@@ -1,5 +1,8 @@
 package com.example.contract.service.impl;
 
+import com.example.common.exception.BusinessException;
+import com.example.common.enums.UserRole;
+import com.example.common.enums.ContractStatus;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -13,7 +16,7 @@ import com.example.contract.service.ContractService;
 import com.example.contract.service.PdfGeneratorService;
 import com.example.contract.feign.OrderFeignClient;
 import com.example.contract.feign.PaymentFeignClient;
-import com.example.contract.common.Result;
+import com.example.common.api.Result;
 import com.example.contract.mq.ContractEventPublisher;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -68,7 +71,7 @@ public class ContractServiceImpl implements ContractService {
             Long count = contractMapper.selectCount(query);
 
             if (count > 0) {
-                throw new RuntimeException("该订单已生成合同");
+                throw new BusinessException("该订单已生成合同");
             }
 
             // 2. 生成合同编号
@@ -95,7 +98,7 @@ public class ContractServiceImpl implements ContractService {
                         contract.getId(), contractNo);
             } catch (Exception e) {
                 log.error("生成合同PDF失败", e);
-                throw new RuntimeException("生成合同PDF失败: " + e.getMessage());
+                throw new BusinessException("生成合同PDF失败: " + e.getMessage());
             }
 
             return contract.getId();
@@ -115,26 +118,26 @@ public class ContractServiceImpl implements ContractService {
             // 1. 查询合同
             Contract contract = contractMapper.selectById(contractId);
             if (contract == null) {
-                throw new RuntimeException("合同不存在");
+                throw new BusinessException("合同不存在");
             }
 
             // 2. 验证用户权限
-            if ("LANDLORD".equals(dto.getUserType())) {
+            if (UserRole.LANDLORD.name().equals(dto.getUserType())) {
                 if (!contract.getLandlordId().equals(dto.getUserId())) {
-                    throw new RuntimeException("您不是该合同的房东");
+                    throw new BusinessException("您不是该合同的房东");
                 }
                 if (contract.getLandlordSignedAt() != null) {
-                    throw new RuntimeException("您已签署该合同");
+                    throw new BusinessException("您已签署该合同");
                 }
-            } else if ("TENANT".equals(dto.getUserType())) {
+            } else if (UserRole.TENANT.name().equals(dto.getUserType())) {
                 if (!contract.getTenantId().equals(dto.getUserId())) {
-                    throw new RuntimeException("您不是该合同的租客");
+                    throw new BusinessException("您不是该合同的租客");
                 }
                 if (contract.getTenantSignedAt() != null) {
-                    throw new RuntimeException("您已签署该合同");
+                    throw new BusinessException("您已签署该合同");
                 }
             } else {
-                throw new RuntimeException("无效的用户类型");
+                throw new BusinessException("无效的用户类型");
             }
 
             // 3. 记录签署信息
@@ -151,14 +154,14 @@ public class ContractServiceImpl implements ContractService {
             LambdaUpdateWrapper<Contract> update = new LambdaUpdateWrapper<>();
             update.eq(Contract::getId, contractId);
 
-            if ("LANDLORD".equals(dto.getUserType())) {
+            if (UserRole.LANDLORD.name().equals(dto.getUserType())) {
                 update.set(Contract::getLandlordSignedAt, LocalDateTime.now());
 
                 // 如果租客已签署,则合同完成
                 if (contract.getTenantSignedAt() != null) {
                     update.set(Contract::getStatus, "COMPLETED");
                 } else {
-                    update.set(Contract::getStatus, "LANDLORD_SIGNED");
+                    update.set(Contract::getStatus, ContractStatus.LANDLORD_SIGNED.name());
                 }
             } else {
                 update.set(Contract::getTenantSignedAt, LocalDateTime.now());
@@ -167,7 +170,7 @@ public class ContractServiceImpl implements ContractService {
                 if (contract.getLandlordSignedAt() != null) {
                     update.set(Contract::getStatus, "COMPLETED");
                 } else {
-                    update.set(Contract::getStatus, "TENANT_SIGNED");
+                    update.set(Contract::getStatus, ContractStatus.TENANT_SIGNED.name());
                 }
             }
 
@@ -191,7 +194,7 @@ public class ContractServiceImpl implements ContractService {
     public Contract getContractById(Long contractId) {
         Contract contract = contractMapper.selectById(contractId);
         if (contract == null) {
-            throw new RuntimeException("合同不存在");
+            throw new BusinessException("合同不存在");
         }
         return contract;
     }
@@ -222,9 +225,9 @@ public class ContractServiceImpl implements ContractService {
         LambdaQueryWrapper<Contract> query = new LambdaQueryWrapper<>();
 
         // 根据用户类型过滤
-        if ("LANDLORD".equals(userType)) {
+        if (UserRole.LANDLORD.name().equals(userType)) {
             query.eq(Contract::getLandlordId, userId);
-        } else if ("TENANT".equals(userType)) {
+        } else if (UserRole.TENANT.name().equals(userType)) {
             query.eq(Contract::getTenantId, userId);
         }
 
@@ -246,12 +249,12 @@ public class ContractServiceImpl implements ContractService {
     public void cancelContract(Long orderId) {
         LambdaQueryWrapper<Contract> query = new LambdaQueryWrapper<>();
         query.eq(Contract::getOrderId, orderId)
-                .in(Contract::getStatus, "PENDING", "LANDLORD_SIGNED", "TENANT_SIGNED");
+                .in(Contract::getStatus, ContractStatus.PENDING.name(), ContractStatus.LANDLORD_SIGNED.name(), ContractStatus.TENANT_SIGNED.name());
 
         LambdaUpdateWrapper<Contract> update = new LambdaUpdateWrapper<>();
         update.eq(Contract::getOrderId, orderId)
-                .in(Contract::getStatus, "PENDING", "LANDLORD_SIGNED", "TENANT_SIGNED")
-                .set(Contract::getStatus, "CANCELLED");
+                .in(Contract::getStatus, ContractStatus.PENDING.name(), ContractStatus.LANDLORD_SIGNED.name(), ContractStatus.TENANT_SIGNED.name())
+                .set(Contract::getStatus, ContractStatus.CANCELLED.name());
 
         contractMapper.update(null, update);
 
@@ -282,17 +285,17 @@ public class ContractServiceImpl implements ContractService {
             // 1. 查询合同
             Contract contract = contractMapper.selectById(contractId);
             if (contract == null) {
-                throw new RuntimeException("合同不存在");
+                throw new BusinessException("合同不存在");
             }
 
             // 2. 验证权限（只有租客可以申请退租）
             if (!contract.getTenantId().equals(userId)) {
-                throw new RuntimeException("无权操作该合同");
+                throw new BusinessException("无权操作该合同");
             }
 
             // 3. 验证合同状态（只有已完成的合同可以退租）
             if (!"COMPLETED".equals(contract.getStatus())) {
-                throw new RuntimeException("只有已完成的合同才能申请退租");
+                throw new BusinessException("只有已完成的合同才能申请退租");
             }
 
             // 4. 计算退款金额
@@ -345,7 +348,7 @@ public class ContractServiceImpl implements ContractService {
     public java.math.BigDecimal calculateRefund(Long contractId) {
         Contract contract = contractMapper.selectById(contractId);
         if (contract == null) {
-            throw new RuntimeException("合同不存在");
+            throw new BusinessException("合同不存在");
         }
         return calculateRefundInternal(contract);
     }

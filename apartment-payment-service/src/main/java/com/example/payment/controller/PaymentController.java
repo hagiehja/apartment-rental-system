@@ -3,11 +3,12 @@ package com.example.payment.controller;
 import com.example.payment.dto.AccountBalanceDTO;
 import com.example.payment.dto.PaymentCreateDTO;
 import com.example.payment.dto.PaymentCreateResultDTO;
-import com.example.payment.model.Result;
+import com.example.common.api.Result;
 import com.example.payment.service.AccountService;
 import com.example.payment.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/payment")
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -139,8 +141,7 @@ public class PaymentController {
             paymentService.refundPaymentByOrderNo(orderNo, userId);
             return Result.success(null);
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("ERROR in paymentService.refundPaymentByOrderNo: " + e.getMessage());
+            log.error("退款失败 orderNo={} userId={}", orderNo, userId, e);
             return Result.error(500, e.getMessage() != null ? e.getMessage() : "Unknown Payment Error");
         }
     }

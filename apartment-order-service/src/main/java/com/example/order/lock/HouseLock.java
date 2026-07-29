@@ -1,5 +1,6 @@
 package com.example.order.lock;
 
+import com.example.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -51,7 +52,7 @@ public class HouseLock {
             acquired = lock.tryLock(waitTime, leaseTime, timeUnit);
             if (!acquired) {
                 log.warn("获取房源锁失败，房源可能正在被其他用户操作: houseId={}", houseId);
-                throw new RuntimeException("系统繁忙，请稍后重试");
+                throw new BusinessException("系统繁忙，请稍后重试");
             }
 
             log.info("成功获取房源锁: houseId={}, thread={}", houseId, Thread.currentThread().getName());

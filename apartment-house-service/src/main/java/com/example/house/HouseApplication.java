@@ -9,7 +9,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * 房源服务启动类
  */
 @EnableDiscoveryClient
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example.house", "com.example.common"})
 @MapperScan("com.example.house.mapper")
 public class HouseApplication {
     public static void main(String[] args) {

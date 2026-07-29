@@ -15,7 +15,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @EnableAspectJAutoProxy(exposeProxy = true)
 @EnableFeignClients
 @EnableDiscoveryClient // 启用Nacos服务发现
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example.order", "com.example.common"})
 @MapperScan("com.example.order.mapper")
 @EnableScheduling // 启用定时任务
 public class OrderApplication {

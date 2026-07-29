@@ -7,9 +7,6 @@ server:
     accept-count: 500  # 队列长度，防止 connection refused
 
 spring:
-  main:
-    allow-bean-definition-overriding: true
-    allow-circular-references: true
   application:
     name: apartment-order-service
   datasource:

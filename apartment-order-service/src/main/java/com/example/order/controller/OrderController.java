@@ -2,10 +2,11 @@ package com.example.order.controller;
 
 import com.example.order.dto.*;
 import com.example.order.model.PageResult;
-import com.example.order.model.Result;
+import com.example.common.api.Result;
 import com.example.order.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/order")
 @RequiredArgsConstructor
+@Slf4j
 public class OrderController {
 
     private final OrderService orderService;
@@ -135,8 +137,7 @@ public class OrderController {
             orderService.updateOrderRefundStatus(orderNo);
             return Result.success(null);
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("ERROR in refundSuccess: " + e.getMessage());
+            log.error("退款回调异常 orderNo={}", orderNo, e);
             return Result.error(500, e.getMessage() != null ? e.getMessage() : "Unknown error");
         }
     }

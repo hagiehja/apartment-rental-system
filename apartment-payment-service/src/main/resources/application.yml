@@ -2,9 +2,6 @@ server:
   port: ${SERVER_PORT:8087}
 
 spring:
-  main:
-    allow-bean-definition-overriding: true
-    allow-circular-references: true
   application:
     name: apartment-payment-service
   datasource:

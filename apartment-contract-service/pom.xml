@@ -21,6 +21,12 @@
     </properties>
 
     <dependencies>
+        <!-- 公共模块:统一 Result / GlobalExceptionHandler / BusinessException -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>apartment-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

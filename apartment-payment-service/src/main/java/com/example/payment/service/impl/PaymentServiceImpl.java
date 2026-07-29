@@ -5,7 +5,7 @@ import com.example.payment.dto.PaymentCreateResultDTO;
 import com.example.payment.entity.Payment;
 import com.example.payment.entity.UserAccount;
 import com.example.payment.enums.PaymentStatus;
-import com.example.payment.exception.BusinessException;
+import com.example.common.exception.BusinessException;
 import com.example.payment.mapper.PaymentMapper;
 import com.example.payment.mapper.UserAccountMapper;
 import com.example.payment.service.AccountService;

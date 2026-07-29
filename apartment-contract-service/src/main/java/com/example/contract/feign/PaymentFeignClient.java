@@ -1,6 +1,6 @@
 package com.example.contract.feign;
 
-import com.example.contract.common.Result;
+import com.example.common.api.Result;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;

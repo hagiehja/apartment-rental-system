@@ -1,30 +1,29 @@
-package com.example.notification.common;
+package com.example.common.api;
 
 import lombok.Data;
 
 /**
- * 统一返回结果类
+ * 统一 API 响应结果
+ * <p>
+ * 标准结构 {@code {code, message, data}},所有 Controller 统一返回此类型。
+ * 避免在多个微服务中各自维护一份拷贝,降低维护成本。
+ *
+ * @param <T> data 字段的业务类型
  */
 @Data
 public class Result<T> {
 
-    /**
-     * 状态码
-     */
+    /** 状态码:200 成功,4xx 客户端错误,5xx 服务端错误,其他业务自定义 */
     private Integer code;
 
-    /**
-     * 消息
-     */
+    /** 提示消息(可直接展示给前端) */
     private String message;
 
-    /**
-     * 数据
-     */
+    /** 业务数据 */
     private T data;
 
     /**
-     * 成功返回
+     * 成功返回(带数据)
      */
     public static <T> Result<T> success(T data) {
         Result<T> result = new Result<>();
@@ -42,7 +41,7 @@ public class Result<T> {
     }
 
     /**
-     * 失败返回
+     * 失败返回(默认 500)
      */
     public static <T> Result<T> error(String message) {
         Result<T> result = new Result<>();

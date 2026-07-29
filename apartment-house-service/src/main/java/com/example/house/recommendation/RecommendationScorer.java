@@ -1,5 +1,6 @@
 package com.example.house.recommendation;
 
+import com.example.common.enums.HouseStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -150,11 +151,11 @@ public class RecommendationScorer {
     }
 
     private double statusScore(RecommendationCandidate candidate, List<String> reasons) {
-        if (Objects.equals("AVAILABLE", candidate.getStatus())) {
+        if (Objects.equals(HouseStatus.AVAILABLE.name(), candidate.getStatus())) {
             reasons.add("available");
             return 12.0;
         }
-        if (Objects.equals("RENTED", candidate.getStatus())) {
+        if (Objects.equals(HouseStatus.RENTED.name(), candidate.getStatus())) {
             return 2.0;
         }
         return -10.0;

@@ -5,7 +5,7 @@ import com.example.payment.entity.Payment;
 import com.example.payment.entity.UserAccount;
 import com.example.payment.enums.PaymentStatus;
 import com.example.payment.enums.TransactionType;
-import com.example.payment.exception.BusinessException;
+import com.example.common.exception.BusinessException;
 import com.example.payment.feign.OrderFeignClient;
 import com.example.payment.mapper.AccountTransactionMapper;
 import com.example.payment.mapper.PaymentMapper;
@@ -68,7 +68,7 @@ public class PaymentFinancialConsistencyTest {
         try {
             lenient().when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
         }
     }
 

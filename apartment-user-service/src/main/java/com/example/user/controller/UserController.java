@@ -3,19 +3,24 @@ package com.example.user.controller;
 import com.example.user.dto.UserInfoDTO;
 import com.example.user.dto.UserLoginDTO;
 import com.example.user.dto.UserRegisterDTO;
-import com.example.user.model.Result;
+import com.example.common.api.Result;
+import com.example.common.enums.UserRole;
 import com.example.user.service.UserService;
+import com.example.user.vo.RoleStatsVO;
+import com.example.user.vo.UserAdminVO;
+import com.example.user.vo.UserBriefVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
 
     private final UserService userService;
@@ -52,7 +57,7 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("用户注册异常 username={}", registerDTO.getUsername(), e);
             return Result.error("注册失败,请稍后再试");
         }
     }
@@ -62,7 +67,7 @@ public class UserController {
      * GET /user/batch?ids=1,2,3
      */
     @GetMapping("/batch")
-    public Result<Map<Long, Map<String, Object>>> batchUserInfo(@RequestParam("ids") List<Long> ids) {
+    public Result<Map<Long, UserBriefVO>> batchUserInfo(@RequestParam("ids") List<Long> ids) {
         return Result.success(userService.batchUserInfo(ids));
     }
 
@@ -70,9 +75,8 @@ public class UserController {
      * 统计接口: 角色分布
      */
     @GetMapping("/stats")
-    public Result<Map<String, Object>> stats() {
-        Map<String, Object> stats = userService.getRoleStats();
-        return Result.success(stats);
+    public Result<RoleStatsVO> stats() {
+        return Result.success(userService.getRoleStats());
     }
 
     /**
@@ -81,7 +85,7 @@ public class UserController {
      * 支持 role / keyword 过滤
      */
     @GetMapping("/admin/list")
-    public Result<Map<String, Object>> adminListUsers(
+    public Result<com.example.common.api.PageResult<UserAdminVO>> adminListUsers(
             @RequestHeader(value = "X-User-Id", required = false) Long userId,
             @RequestParam(value = "role", required = false) String role,
             @RequestParam(value = "keyword", required = false) String keyword,
@@ -94,7 +98,8 @@ public class UserController {
         if (!userService.isAdmin(userId)) {
             return Result.error("无权限访问管理后台");
         }
-        Map<String, Object> result = userService.adminListUsers(role, keyword, pageNum, pageSize);
+        com.example.common.api.PageResult<UserAdminVO> result =
+                userService.adminListUsers(role, keyword, pageNum, pageSize);
         return Result.success(result);
     }
 
@@ -113,7 +118,7 @@ public class UserController {
             return Result.error("无权限访问管理后台");
         }
         String newRole = body.get("role");
-        if (!"TENANT".equals(newRole) && !"LANDLORD".equals(newRole) && !"ADMIN".equals(newRole)) {
+        if (UserRole.of(newRole) == null) {
             return Result.error("角色只能为 TENANT / LANDLORD / ADMIN");
         }
         userService.adminUpdateRole(targetUserId, newRole);

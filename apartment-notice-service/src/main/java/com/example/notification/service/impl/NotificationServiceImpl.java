@@ -1,5 +1,6 @@
 package com.example.notification.service.impl;
 
+import com.example.common.exception.BusinessException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -52,7 +53,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         NotificationTemplate template = templateMapper.selectOne(templateQuery);
         if (template == null) {
-            throw new RuntimeException("消息模板不存在或已禁用: " + dto.getTemplateCode());
+            throw new BusinessException("消息模板不存在或已禁用: " + dto.getTemplateCode());
         }
 
         // 2. 替换模板变量
@@ -160,11 +161,11 @@ public class NotificationServiceImpl implements NotificationService {
         // 验证消息是否属于该用户
         NotificationMessage message = messageMapper.selectById(messageId);
         if (message == null) {
-            throw new RuntimeException("消息不存在");
+            throw new BusinessException("消息不存在");
         }
 
         if (!message.getUserId().equals(userId)) {
-            throw new RuntimeException("无权操作该消息");
+            throw new BusinessException("无权操作该消息");
         }
 
         if (message.getIsRead() == 1) {
@@ -208,11 +209,11 @@ public class NotificationServiceImpl implements NotificationService {
         NotificationMessage message = messageMapper.selectById(messageId);
 
         if (message == null) {
-            throw new RuntimeException("消息不存在");
+            throw new BusinessException("消息不存在");
         }
 
         if (!message.getUserId().equals(userId)) {
-            throw new RuntimeException("无权查看该消息");
+            throw new BusinessException("无权查看该消息");
         }
 
         return message;

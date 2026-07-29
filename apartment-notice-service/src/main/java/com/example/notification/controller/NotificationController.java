@@ -1,7 +1,7 @@
 package com.example.notification.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.example.notification.common.Result;
+import com.example.common.api.Result;
 import com.example.notification.dto.SendNotificationDTO;
 import com.example.notification.entity.NotificationMessage;
 import com.example.notification.service.NotificationService;

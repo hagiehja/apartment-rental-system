@@ -5,9 +5,6 @@ jwt:
   expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 spring:
-  main:
-    allow-bean-definition-overriding: true
-    allow-circular-references: true
   cloud:
     nacos:
       config:
@@ -27,14 +24,15 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-      
+    # 使用 SLF4J 接管 SQL 日志(可通过 logging.level 控制),避免 stdout 不可控输出
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
 server:
   port: ${SERVER_PORT:8081}
-  
+
 logging:
   level:
-    com.example.user: debug
+    com.example.user: ${LOG_LEVEL_APP:info}
     org.springframework: info
 
 # Redis配置

@@ -1,5 +1,6 @@
 package com.example.order.service.impl;
 
+import com.example.common.enums.HouseStatus;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.order.dto.*;
@@ -7,7 +8,7 @@ import com.example.order.entity.InstallmentPlan;
 import com.example.order.entity.RentalOrder;
 import com.example.order.enums.OrderStatus;
 import com.example.order.enums.PaymentStatus;
-import com.example.order.exception.BusinessException;
+import com.example.common.exception.BusinessException;
 import com.example.order.lock.HouseLock;
 import com.example.order.mapper.InstallmentPlanMapper;
 import com.example.order.mapper.OrderMapper;
@@ -18,7 +19,7 @@ import com.example.order.utils.OrderNoGenerator;
 import com.example.order.feign.HouseFeignClient;
 import com.example.order.feign.ContractFeignClient;
 import com.example.order.feign.PaymentFeignClient;
-import com.example.order.model.Result;
+import com.example.common.api.Result;
 import com.example.order.mq.OrderNotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -86,7 +87,7 @@ public class OrderServiceImpl implements OrderService {
         // 1. 检查该房源是否已有未完成订单 (此时在事务内且持有锁，能看到前一个线程已提交的数据)
         LambdaQueryWrapper<RentalOrder> houseOrderQuery = new LambdaQueryWrapper<>();
         houseOrderQuery.eq(RentalOrder::getHouseId, createDTO.getHouseId())
-                .in(RentalOrder::getOrderStatus, "PENDING_PAYMENT", "PAID", "RENTING");
+                .in(RentalOrder::getOrderStatus, OrderStatus.PENDING_PAYMENT.name(), OrderStatus.PAID.name(), OrderStatus.RENTING.name());
         Long houseOrderCount = orderMapper.selectCount(houseOrderQuery);
         if (houseOrderCount > 0) {
             throw new BusinessException("该房源已有未完成订单，请选择其他房源");
@@ -94,7 +95,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 2. 再次检查房源状态（防止在获取锁前状态已改变）
         String houseStatus = (String) houseInfo.get("status");
-        if (!"AVAILABLE".equals(houseStatus)) {
+        if (!HouseStatus.AVAILABLE.name().equals(houseStatus)) {
             throw new BusinessException("房源已被租赁或下架，请选择其他房源");
         }
 
@@ -320,7 +321,7 @@ public class OrderServiceImpl implements OrderService {
 
                     // 更新房源状态为已租赁
                     try {
-                        houseFeignClient.updateHouseStatus(latestOrder.getHouseId(), "RENTED");
+                        houseFeignClient.updateHouseStatus(latestOrder.getHouseId(), HouseStatus.RENTED.name());
                         log.info("房源状态已更新为已租赁: houseId={}", latestOrder.getHouseId());
                     } catch (Exception e) {
                         log.error("更新房源状态失败，将进行重试: houseId={}", latestOrder.getHouseId(), e);
@@ -470,7 +471,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 3. 恢复房源状态为可租赁
         try {
-            houseFeignClient.updateHouseStatus(order.getHouseId(), "AVAILABLE");
+            houseFeignClient.updateHouseStatus(order.getHouseId(), HouseStatus.AVAILABLE.name());
             log.info("房源状态已恢复为可租赁: houseId={}", order.getHouseId());
         } catch (Exception e) {
             log.error("恢复房源状态失败: houseId={}", order.getHouseId(), e);

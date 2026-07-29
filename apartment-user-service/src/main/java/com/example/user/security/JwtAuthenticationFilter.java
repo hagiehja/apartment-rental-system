@@ -1,6 +1,8 @@
 package com.example.user.security;
 
 import com.example.user.service.UserService;
+import com.example.user.utils.JWTUtils;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,11 +18,11 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private final JWTUtils jwtUtils;
     private final UserService userService;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserService userService) {
-        this.jwtUtil = jwtUtil;
+    public JwtAuthenticationFilter(JWTUtils jwtUtils, UserService userService) {
+        this.jwtUtils = jwtUtils;
         this.userService = userService;
     }
 
@@ -31,8 +33,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             try {
-                if (jwtUtil.validateToken(token)) {
-                    String username = jwtUtil.getUsername(token);
+                if (jwtUtils.validateToken(token)) {
+                    Claims claims = jwtUtils.parseToken(token);
+                    String username = claims.get("username", String.class);
                     UserDetails userDetails = userService.loadUserByUsername(username);
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null,
                             userDetails.getAuthorities());

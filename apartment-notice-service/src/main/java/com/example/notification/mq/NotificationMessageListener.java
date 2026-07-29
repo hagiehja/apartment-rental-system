@@ -1,5 +1,6 @@
 package com.example.notification.mq;
 
+import com.example.common.exception.BusinessException;
 import com.example.notification.dto.SendNotificationDTO;
 import com.example.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class NotificationMessageListener implements RocketMQListener<SendNotific
         } catch (Exception e) {
             log.error("处理通知消息失败", e);
             // 这里可以添加重试逻辑或发送到死信队列
-            throw new RuntimeException("处理通知消息失败: " + e.getMessage());
+            throw new BusinessException("处理通知消息失败: " + e.getMessage());
         }
     }
 }

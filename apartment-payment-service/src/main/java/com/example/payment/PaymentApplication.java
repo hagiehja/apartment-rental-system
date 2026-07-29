@@ -11,7 +11,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
  */
 @EnableFeignClients
 @EnableDiscoveryClient
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example.payment", "com.example.common"})
 @MapperScan("com.example.payment.mapper")
 public class PaymentApplication {
     public static void main(String[] args) {

@@ -1,5 +1,7 @@
 package com.example.house.service.impl;
 
+import com.example.common.exception.BusinessException;
+import com.example.common.enums.HouseStatus;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -70,11 +72,11 @@ public class HouseServiceImpl implements HouseService {
             try {
                 house.setFacilities(objectMapper.writeValueAsString(publishDTO.getFacilities()));
             } catch (JsonProcessingException e) {
-                throw new RuntimeException("设施信息转换失败", e);
+                throw new BusinessException("设施信息转换失败", e);
             }
         }
 
-        house.setStatus("AVAILABLE");
+        house.setStatus(HouseStatus.AVAILABLE.name());
         house.setViewCount(0);
 
         // 保存房源
@@ -141,7 +143,7 @@ public class HouseServiceImpl implements HouseService {
             queryWrapper.eq("status", queryDTO.getStatus());
         } else {
             // 默认展示 AVAILABLE + RENTED（排除 OFFLINE 下架的房源）
-            queryWrapper.in("status", "AVAILABLE", "RENTED");
+            queryWrapper.in("status", HouseStatus.AVAILABLE.name(), HouseStatus.RENTED.name());
         }
 
         // 排序
@@ -311,10 +313,10 @@ public class HouseServiceImpl implements HouseService {
     public void updateHouse(Long houseId, HousePublishDTO publishDTO, Long landlordId) {
         House house = houseMapper.selectById(houseId);
         if (house == null) {
-            throw new RuntimeException("房源不存在");
+            throw new BusinessException("房源不存在");
         }
         if (!house.getLandlordId().equals(landlordId)) {
-            throw new RuntimeException("无权操作此房源");
+            throw new BusinessException("无权操作此房源");
         }
 
         // 更新房源信息
@@ -340,7 +342,7 @@ public class HouseServiceImpl implements HouseService {
             try {
                 house.setFacilities(objectMapper.writeValueAsString(publishDTO.getFacilities()));
             } catch (JsonProcessingException e) {
-                throw new RuntimeException("设施信息转换失败", e);
+                throw new BusinessException("设施信息转换失败", e);
             }
         }
 
@@ -374,10 +376,10 @@ public class HouseServiceImpl implements HouseService {
     public void deleteHouse(Long houseId, Long landlordId) {
         House house = houseMapper.selectById(houseId);
         if (house == null) {
-            throw new RuntimeException("房源不存在");
+            throw new BusinessException("房源不存在");
         }
         if (!house.getLandlordId().equals(landlordId)) {
-            throw new RuntimeException("无权操作此房源");
+            throw new BusinessException("无权操作此房源");
         }
 
         // 删除房源
@@ -391,12 +393,12 @@ public class HouseServiceImpl implements HouseService {
 
     @Override
     public void offlineHouse(Long houseId, Long landlordId) {
-        updateHouseStatus(houseId, landlordId, "OFFLINE");
+        updateHouseStatus(houseId, landlordId, HouseStatus.OFFLINE.name());
     }
 
     @Override
     public void onlineHouse(Long houseId, Long landlordId) {
-        updateHouseStatus(houseId, landlordId, "AVAILABLE");
+        updateHouseStatus(houseId, landlordId, HouseStatus.AVAILABLE.name());
     }
 
     // 房东手动上下架时，清除对应缓存
@@ -407,10 +409,10 @@ public class HouseServiceImpl implements HouseService {
     private void updateHouseStatus(Long houseId, Long landlordId, String status) {
         House house = houseMapper.selectById(houseId);
         if (house == null) {
-            throw new RuntimeException("房源不存在");
+            throw new BusinessException("房源不存在");
         }
         if (!house.getLandlordId().equals(landlordId)) {
-            throw new RuntimeException("无权操作此房源");
+            throw new BusinessException("无权操作此房源");
         }
 
         house.setStatus(status);
@@ -426,15 +428,15 @@ public class HouseServiceImpl implements HouseService {
     public void updateHouseStatus(Long houseId, String status) {
         House house = houseMapper.selectById(houseId);
         if (house == null) {
-            throw new RuntimeException("房源不存在");
+            throw new BusinessException("房源不存在");
         }
 
         // 若目标状态为 RENTED，需要进行幂等保护：
         // 只有当前状态为 AVAILABLE 时才允许变更，防止重复出租
-        if ("RENTED".equals(status) && !"AVAILABLE".equals(house.getStatus())) {
+        if (HouseStatus.RENTED.name().equals(status) && !HouseStatus.AVAILABLE.name().equals(house.getStatus())) {
             log.warn("房源状态变更被拒绝，该房源已不可租: houseId={}, currentStatus={}",
                     houseId, house.getStatus());
-            throw new RuntimeException("房源已不可租赁，当前状态：" + house.getStatus());
+            throw new BusinessException("房源已不可租赁，当前状态：" + house.getStatus());
         }
 
         house.setStatus(status);

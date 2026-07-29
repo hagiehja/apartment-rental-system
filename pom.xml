@@ -4,6 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <packaging>pom</packaging>
     <modules>
+        <module>apartment-common</module>
         <module>apartment-gateway</module>
         <module>apartment-user-service</module>
         <module>apartment-house-service</module>
