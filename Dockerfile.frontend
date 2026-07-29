@@ -1,0 +1,17 @@
+# Dockerfile.frontend - Vue 3 前端多阶段构建
+# Stage 1: 编译 Vue 静态文件
+FROM node:18-alpine AS build
+WORKDIR /app
+# 用淘宝镜像加速 npm
+RUN npm config set registry https://registry.npmmirror.com
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ .
+RUN npm run build
+
+# Stage 2: nginx 托管静态文件 + 反向代理 API
+FROM nginx:1.27-alpine
+RUN rm /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY deploy/nginx/frontend.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

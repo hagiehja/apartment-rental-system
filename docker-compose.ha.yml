@@ -24,6 +24,18 @@ x-app-common: &app-common
     start_period: 90s
 
 services:
+  # ============ 前端 (Vue 3 SPA + nginx 反代 API) ============
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: apartment-frontend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    restart: unless-stopped
+    depends_on:
+      - nginx
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
