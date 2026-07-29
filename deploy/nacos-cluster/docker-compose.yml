@@ -58,4 +58,7 @@ services:
 
 networks:
   nacos-ha-net:
-    external: true
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.0.0/16

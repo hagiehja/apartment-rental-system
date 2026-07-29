@@ -13,7 +13,7 @@ services:
       - prometheus-data:/prometheus
     networks:
       - monitor-net
-      - apartment-ha_default      # 跨网络抓应用容器(用容器名)
+      - default
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/healthy"]
       interval: 15s
@@ -82,5 +82,3 @@ volumes:
 networks:
   monitor-net:
     driver: bridge
-  apartment-ha_default:        # 应用容器所在网络(external,抓 JVM/HTTP 指标用)
-    external: true

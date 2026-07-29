@@ -75,10 +75,8 @@ apartment-rental-system/
 ## 🚀 快速开始
 
 ### 环境要求
-- JDK 17+
-- Maven 3.9+
-- Node.js 18+
-- Docker 24+ & Docker Compose v2
+- Docker 24+ & Docker Compose v2.20+(需支持 `include` 语法)
+- Node.js 18+(仅前端开发需要,生产部署已在 Docker 内)
 
 ### 1. 克隆代码
 ```bash
@@ -86,29 +84,54 @@ git clone https://github.com/hagiehja/apartment-rental-system.git
 cd apartment-rental-system
 ```
 
-### 2. 启动中间件
+### 2. 配置环境变量
 ```bash
-docker compose -f docker-compose.ha.yml up -d
-```
-包含:Nacos / MySQL 主从 / Redis Sentinel / RocketMQ / Grafana
-
-### 3. 构建微服务
-```bash
-mvn clean package -DskipTests
+cp .env.app.example .env.app
+# 按需修改 .env.app 里的 IP / 密码(默认指向 192.168.24.129)
 ```
 
-### 4. 启动后端
+### 3. 一键启动 ⭐
 ```bash
-docker compose -f docker-compose.app.yml up -d
+docker compose up -d
 ```
 
-### 5. 启动前端
+**这一条命令会自动按依赖顺序启动全部 25 个服务**:
+- 中间件(17):MySQL 主从 + Redis Sentinel(1主2从3哨兵) + Nacos 集群(3 节点) + RocketMQ + Prometheus/Grafana 监控
+- 应用(8):Gateway / User / House / Order / Payment / Notice / Contract + Nginx
+
+> 首次启动会在 Docker 内编译 Java(多阶段构建),约 5-10 分钟,后续启动秒级。
+
+### 4. 查看状态
+```bash
+docker compose ps                                  # 全部服务状态
+docker compose logs -f apartment-gateway           # 看某个服务日志
+```
+
+### 5. 访问应用
+| 服务 | 地址 | 账号 |
+|------|------|------|
+| 应用网关 | http://localhost:8080 | - |
+| Nacos 控制台 | http://localhost:8848/nacos | nacos / nacos |
+| Grafana 监控 | http://localhost:3000 | admin / admin |
+| RocketMQ 面板 | http://localhost:8082 | - |
+
+### 6. 停止 / 重启
+```bash
+docker compose down                 # 停止全部
+docker compose down -v              # 停止并删除数据(慎用!)
+docker compose restart              # 重启全部
+docker compose up -d --build xxx    # 重新构建某个服务
+```
+
+### 7. (可选)前端开发模式
 ```bash
 cd frontend
 npm install
 npm run dev
 # 访问 http://localhost:5173
 ```
+
+---
 
 ---
 

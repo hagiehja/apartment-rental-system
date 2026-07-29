@@ -4,6 +4,7 @@ WORKDIR /workspace
 # 注入阿里云 Maven 镜像源,加速依赖下载(国内从 10KB/s → 4MB/s)
 COPY settings.xml /root/.m2/settings.xml
 COPY pom.xml .
+COPY apartment-common/pom.xml apartment-common/pom.xml
 COPY apartment-gateway/pom.xml apartment-gateway/pom.xml
 COPY apartment-user-service/pom.xml apartment-user-service/pom.xml
 COPY apartment-house-service/pom.xml apartment-house-service/pom.xml
