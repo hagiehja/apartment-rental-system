@@ -25,6 +25,7 @@ CREATE TABLE `house` (
     `facilities` JSON,
     `status` VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE',
     `view_count` INT DEFAULT 0,
+    `version` INT NOT NULL DEFAULT 1 COMMENT '乐观锁版本号(MyBatis-Plus @Version)',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`house_id`),

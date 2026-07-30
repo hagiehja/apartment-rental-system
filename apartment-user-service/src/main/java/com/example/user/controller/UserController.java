@@ -65,10 +65,14 @@ public class UserController {
     /**
      * 批量查询用户信息 (给其他服务调用, 例如房源服务要显示房东名)
      * GET /user/batch?ids=1,2,3
+     * [安全] 此接口在 nginx 公开白名单内(无需登录),手机号必须脱敏,防止批量爬取 PII。
+     *        需要手机号的场景走登录后的鉴权接口。
      */
     @GetMapping("/batch")
     public Result<Map<Long, UserBriefVO>> batchUserInfo(@RequestParam("ids") List<Long> ids) {
-        return Result.success(userService.batchUserInfo(ids));
+        Map<Long, UserBriefVO> result = userService.batchUserInfo(ids);
+        result.values().forEach(vo -> vo.setPhone(null));
+        return Result.success(result);
     }
 
     /**
