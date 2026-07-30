@@ -8,7 +8,8 @@ services:
   redis-master:
     image: redis:6.2.14
     container_name: redis-master
-    command: redis-server --appendonly yes --requirepass ApmtRedis2026Secure! --replica-announce-ip 192.168.24.129 --replica-announce-port 6379
+    # 必须带 --masterauth:failover 后本容器可能变 slave,无 masterauth 会报 NOAUTH 复制失败
+    command: redis-server --appendonly yes --requirepass ApmtRedis2026Secure! --masterauth ApmtRedis2026Secure! --replica-announce-ip 192.168.24.129 --replica-announce-port 6379
     ports:
       - "6379:6379"
     restart: unless-stopped
@@ -27,7 +28,7 @@ services:
     image: redis:6.2.14
     container_name: redis-sentinel-1
     # announce-ip/port: 让 sentinel 把宿主机 IP 通告给客户端,否则客户端收到 docker 内部 IP(172.x)连不上
-    command: sh -c 'printf "port 26379\nsentinel announce-ip 192.168.24.129\nsentinel announce-port 26379\nsentinel monitor mymaster 192.168.24.129 6379 2\nsentinel auth-pass mymaster ApmtRedis2026Secure!\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 20000\nsentinel parallel-syncs mymaster 1\n" > /tmp/sentinel.conf && redis-server /tmp/sentinel.conf --sentinel'
+    command: sh -c 'printf "port 26379\nsentinel announce-ip 192.168.24.129\nsentinel announce-port 26379\nsentinel monitor mymaster 192.168.24.129 6379 2\nsentinel auth-pass mymaster ApmtRedis2026Secure!\nsentinel down-after-milliseconds mymaster 30000\nsentinel failover-timeout mymaster 60000\nsentinel parallel-syncs mymaster 1\n" > /tmp/sentinel.conf && redis-server /tmp/sentinel.conf --sentinel'
     ports:
       - "26379:26379"
     depends_on:
@@ -38,7 +39,7 @@ services:
   redis-sentinel-2:
     image: redis:6.2.14
     container_name: redis-sentinel-2
-    command: sh -c 'printf "port 26379\nsentinel announce-ip 192.168.24.129\nsentinel announce-port 26380\nsentinel monitor mymaster 192.168.24.129 6379 2\nsentinel auth-pass mymaster ApmtRedis2026Secure!\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 20000\nsentinel parallel-syncs mymaster 1\n" > /tmp/sentinel.conf && redis-server /tmp/sentinel.conf --sentinel'
+    command: sh -c 'printf "port 26379\nsentinel announce-ip 192.168.24.129\nsentinel announce-port 26380\nsentinel monitor mymaster 192.168.24.129 6379 2\nsentinel auth-pass mymaster ApmtRedis2026Secure!\nsentinel down-after-milliseconds mymaster 30000\nsentinel failover-timeout mymaster 60000\nsentinel parallel-syncs mymaster 1\n" > /tmp/sentinel.conf && redis-server /tmp/sentinel.conf --sentinel'
     ports:
       - "26380:26379"
     depends_on:
@@ -49,7 +50,7 @@ services:
   redis-sentinel-3:
     image: redis:6.2.14
     container_name: redis-sentinel-3
-    command: sh -c 'printf "port 26379\nsentinel announce-ip 192.168.24.129\nsentinel announce-port 26381\nsentinel monitor mymaster 192.168.24.129 6379 2\nsentinel auth-pass mymaster ApmtRedis2026Secure!\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 20000\nsentinel parallel-syncs mymaster 1\n" > /tmp/sentinel.conf && redis-server /tmp/sentinel.conf --sentinel'
+    command: sh -c 'printf "port 26379\nsentinel announce-ip 192.168.24.129\nsentinel announce-port 26381\nsentinel monitor mymaster 192.168.24.129 6379 2\nsentinel auth-pass mymaster ApmtRedis2026Secure!\nsentinel down-after-milliseconds mymaster 30000\nsentinel failover-timeout mymaster 60000\nsentinel parallel-syncs mymaster 1\n" > /tmp/sentinel.conf && redis-server /tmp/sentinel.conf --sentinel'
     ports:
       - "26381:26379"
     depends_on:
