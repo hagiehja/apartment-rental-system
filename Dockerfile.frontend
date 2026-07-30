@@ -1,6 +1,6 @@
 # Dockerfile.frontend - Vue 3 前端多阶段构建
 # Stage 1: 编译 Vue 静态文件
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 WORKDIR /app
 # 用淘宝镜像加速 npm
 RUN npm config set registry https://registry.npmmirror.com

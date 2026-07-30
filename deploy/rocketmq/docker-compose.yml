@@ -34,8 +34,8 @@ services:
       JAVA_OPT_EXT: "-server -Xms1g -Xmx1g -Xmn256m"
     volumes:
       - ./broker.conf:/etc/rocketmq/broker.conf:ro
-      - broker-store:/home/rocketmq/store
-      - broker-logs:/home/rocketmq/logs
+      # 注:named volume 默认归 root,broker 运行用户 rocketmq 无写权限 → NPE
+      # 改用容器内存储(重启丢失消息,毕业设计演示可接受)
     ports:
       - "10911:10911"
       - "10909:10909"
