@@ -23,7 +23,8 @@ public class WebConfig implements WebMvcConfigurer {
                     "http://localhost:8080",      // 本地直连网关
                     "http://127.0.0.1:5173",
                     "http://192.168.24.129",      // 生产前端
-                    "http://192.168.24.129:80"
+                    "http://192.168.24.129:80",
+                    "http://192.168.24.129:5173"   // 生产前端 (nginx 直连端口)
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")
                 .allowedHeaders("*")
@@ -41,6 +42,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/user/health",
                         "/user/stats",
                         "/user/batch",
+                        "/user/verify",
                         "/actuator/**"
                 );
     }

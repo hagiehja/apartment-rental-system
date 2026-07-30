@@ -6,12 +6,14 @@ import com.example.user.dto.UserRegisterDTO;
 import com.example.common.api.Result;
 import com.example.common.enums.UserRole;
 import com.example.user.service.UserService;
+import com.example.user.utils.JWTUtils;
 import com.example.user.vo.RoleStatsVO;
 import com.example.user.vo.UserAdminVO;
 import com.example.user.vo.UserBriefVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final JWTUtils jwtUtils;
 
     /**
      * 健康检查接口
@@ -31,6 +34,26 @@ public class UserController {
     @GetMapping("/health")
     public Result<String> health() {
         return Result.success("User Service is running successfully!");
+    }
+
+    /**
+     * JWT 验证接口(供 nginx auth_request 子请求调用)
+     * 替代未部署的独立 jwt-auth 服务。成功返回 200 + X-Auth-User-Id 响应头,
+     * 失败返回 401。nginx 据此注入 X-User-Id 给下游服务。
+     */
+    @GetMapping("/verify")
+    public ResponseEntity<Void> verifyToken(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        if (auth != null && auth.startsWith("Bearer ")) {
+            String token = auth.substring(7);
+            if (jwtUtils.validateToken(token)) {
+                Long userId = jwtUtils.getUserIdFromToken(token);
+                return ResponseEntity.ok()
+                        .header("X-Auth-User-Id", userId.toString())
+                        .build();
+            }
+        }
+        return ResponseEntity.status(401).build();
     }
 
     /**
