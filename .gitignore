@@ -45,3 +45,6 @@ docs/*.png
 docs/*.jpg
 docs/*.jpeg
 docs/STARTUP-GUIDE.md
+
+# Local isolated worktrees
+.worktrees/
