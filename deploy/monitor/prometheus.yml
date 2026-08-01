@@ -5,31 +5,20 @@ global:
     monitor: 'apartment-monitor'
 
 scrape_configs:
-  # ============ 基础设施指标(轨道A,立即可用) ============
-  # Prometheus 自身
+  # Prometheus 自身指标
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  # 主机指标:VM 的 CPU / 内存 / 磁盘 / 网络
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['node-exporter:9100']
-
-  # 容器指标:每个容器的 CPU / 内存 / 网络吞吐
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['cadvisor:8080']
-
-  # ============ 应用指标(轨道B,应用镜像加 micrometer 后启用) ============
+  # 七个应用通过 Compose 服务 DNS 暴露 Micrometer 指标
   - job_name: 'apartment-apps'
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets:
-          - 'apartment-ha-apartment-gateway-1:8080'
-          - 'apartment-ha-apartment-user-service-1:8081'
-          - 'apartment-ha-apartment-house-service-1:8083'
-          - 'apartment-ha-apartment-order-service-1:8088'
-          - 'apartment-ha-apartment-payment-service-1:8087'
-          - 'apartment-ha-apartment-notice-service-1:8091'
-          - 'apartment-ha-apartment-contract-service-1:8092'
+          - 'apartment-gateway:8080'
+          - 'apartment-user-service:8081'
+          - 'apartment-house-service:8083'
+          - 'apartment-order-service:8088'
+          - 'apartment-payment-service:8087'
+          - 'apartment-notice-service:8091'
+          - 'apartment-contract-service:8092'
