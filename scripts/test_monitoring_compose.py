@@ -37,7 +37,9 @@ assert 3000 in published_ports("grafana")
 assert services["grafana"]["depends_on"]["prometheus"]["condition"] == "service_healthy"
 
 grafana_volumes = services["grafana"].get("volumes", [])
-assert any(volume["target"] == "/etc/grafana/provisioning" for volume in grafana_volumes)
+assert any(
+    volume["target"] == "/etc/grafana/provisioning/datasources" for volume in grafana_volumes
+)
 
 prometheus = (root / "deploy/monitor/prometheus.yml").read_text(encoding="utf-8")
 for stale in ("apartment-ha-", "node-exporter:9100", "cadvisor:8080"):
