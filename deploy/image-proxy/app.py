@@ -60,9 +60,18 @@ async def fetch(session, url, timeout=45):
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
             if resp.status == 200:
                 data = await resp.read()
-                if len(data) > 2000:
+                if (
+                    len(data) > 2000
+                    and resp.content_type.lower() in {"image/jpeg", "image/jpg"}
+                    and data[:3] == bytes((0xFF, 0xD8, 0xFF))
+                ):
                     return data
-                log.warning("too small %s -> %d bytes", url[:80], len(data))
+                log.warning(
+                    "invalid image %s type=%s bytes=%d",
+                    url[:80],
+                    resp.content_type,
+                    len(data),
+                )
             else:
                 log.warning("upstream %s -> %s", url[:80], resp.status)
     except Exception as exc:
