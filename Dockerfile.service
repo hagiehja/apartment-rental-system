@@ -26,7 +26,7 @@ FROM eclipse-temurin:17-jre
 
 # L0 容灾:装 curl,供 Docker HEALTHCHECK 探活 actuator/health
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -35,6 +35,9 @@ ENV TZ=Asia/Shanghai \
     JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
 
 COPY --from=build /workspace/${MODULE}/target/*.jar /app/app.jar
+COPY deploy/scripts/wait-for-dependencies.sh /app/wait-for-dependencies.sh
+RUN chmod +x /app/wait-for-dependencies.sh
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["/app/wait-for-dependencies.sh"]
+CMD ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
