@@ -146,6 +146,39 @@ class MigrationTests(unittest.TestCase):
         for call in run_mysql.call_args_list:
             self.assertIn("image_url LIKE '/img/flickr/%'", call.args[1])
 
+    @patch("migration.run_mysql")
+    @patch("migration.query_samples")
+    @patch("migration.query_counts")
+    def test_apply_resumes_when_master_is_done_and_slave_is_not(
+        self, query_counts, query_samples, run_mysql
+    ):
+        master_done = self.counts(0, 100000)
+        slave_not_done = self.counts(100000, 0)
+        final = self.counts(0, 100000)
+        query_counts.side_effect = [master_done, slave_not_done, final, final]
+        flickr_rows = [(1, 1, 1, "/img/flickr/cover/101/800/600")]
+        query_samples.side_effect = [flickr_rows, flickr_rows]
+
+        migration.migrate(apply=True, batch_size=50000)
+
+        self.assertEqual(run_mysql.call_count, 4)
+        master_calls = [
+            call for call in run_mysql.call_args_list
+            if call.args[0] == "mysql-ha-master"
+        ]
+        slave_calls = [
+            call for call in run_mysql.call_args_list
+            if call.args[0] == "mysql-ha-slave"
+        ]
+        self.assertEqual(len(master_calls), 2)
+        self.assertEqual(len(slave_calls), 2)
+
+    def test_fingerprint_sql_normalizes_flickr_prefix(self):
+        self.assertIn(
+            "REPLACE(image_url, '/img/flickr/', '/img/real/')",
+            migration.COUNT_SQL,
+        )
+
     @patch("migration.query_counts")
     def test_mismatched_master_slave_totals_stop_before_updates(self, query_counts):
         query_counts.side_effect = [

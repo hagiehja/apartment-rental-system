@@ -54,7 +54,11 @@ PLACEHOLDER_SVG = b"""<svg xmlns="http://www.w3.org/2000/svg" width="800" height
 def validate_flickr_params(slot, seed, width, height):
     if slot not in FLICKR_KEYWORDS:
         raise web.HTTPNotFound()
-    if not seed.isdigit() or not 1 <= int(seed) <= 2147483647:
+    if (
+        not seed.isascii()
+        or not seed.isdecimal()
+        or not 1 <= int(seed) <= 2147483647
+    ):
         raise web.HTTPNotFound()
     if width != "800" or height != "600":
         raise web.HTTPNotFound()

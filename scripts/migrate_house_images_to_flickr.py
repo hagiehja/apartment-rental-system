@@ -15,8 +15,8 @@ SELECT COUNT(*),
        COALESCE(SUM(image_url LIKE 'https://picsum.photos/%'), 0),
        COALESCE(MIN(image_id), 0),
        COALESCE(MAX(image_id), 0),
-       COALESCE(SUM(CRC32(CONCAT_WS('|', image_id, house_id, sort_order, image_url))), 0),
-       COALESCE(BIT_XOR(CRC32(CONCAT_WS('|', image_id, house_id, sort_order, image_url))), 0)
+       COALESCE(SUM(CRC32(CONCAT_WS('|', image_id, house_id, sort_order, REPLACE(image_url, '/img/flickr/', '/img/real/')))), 0),
+       COALESCE(BIT_XOR(CRC32(CONCAT_WS('|', image_id, house_id, sort_order, REPLACE(image_url, '/img/flickr/', '/img/real/')))), 0)
 FROM house_image;
 """.strip()
 SAMPLE_SQL = """
@@ -174,9 +174,15 @@ def migrate(apply=False, rollback=False, batch_size=50000):
         print_counts(container, counts)
     validate_pair(before[0], before[1])
     before_prefix = None
-    if before[0].real == before[0].total:
+    if (
+        before[0].real == before[0].total
+        and before[1].real == before[1].total
+    ):
         before_prefix = "real"
-    elif before[0].flickr == before[0].total:
+    elif (
+        before[0].flickr == before[0].total
+        and before[1].flickr == before[1].total
+    ):
         before_prefix = "flickr"
     if before_prefix:
         validate_samples(

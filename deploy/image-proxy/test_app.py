@@ -71,6 +71,7 @@ class FlickrTests(unittest.IsolatedAsyncioTestCase):
             ("cover", "0", "800", "600"),
             ("cover", "2147483648", "800", "600"),
             ("cover", "38937901", "1600", "1200"),
+            ("cover", "\u00b2", "800", "600"),
         ]
         for params in invalid:
             with self.subTest(params=params), self.assertRaises(app.web.HTTPNotFound):
