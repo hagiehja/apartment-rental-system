@@ -1,0 +1,24 @@
+name: apartment-image-proxy
+
+services:
+  image-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: apartment-image-proxy:latest
+    container_name: apartment-ha-image-proxy-1
+    restart: unless-stopped
+    expose:
+      - "8088"
+    volumes:
+      - image-proxy-cache-v2:/data/img-cache
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8088/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  image-proxy-cache-v2:

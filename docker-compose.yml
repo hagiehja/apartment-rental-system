@@ -19,4 +19,5 @@ include:
   - deploy/nacos-cluster/docker-compose.yml   # Nacos 集群
   - deploy/rocketmq/docker-compose.yml        # RocketMQ
   - deploy/monitor/docker-compose.yml         # Prometheus + Grafana，默认随一键部署启动
+  - deploy/image-proxy/docker-compose.yml     # Image proxy, started by default
   - docker-compose.ha.yml                     # 7 个微服务 + Nginx
