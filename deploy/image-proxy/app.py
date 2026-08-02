@@ -51,9 +51,23 @@ FLICKR_KEYWORDS = {
 PLACEHOLDER_SVG = b"""<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="800" height="600" fill="#eef1f4"/><path d="M250 390l100-110 75 80 55-55 90 85H250z" fill="#bac3cc"/><circle cx="325" cy="215" r="34" fill="#bac3cc"/></svg>"""
 
 
+def validate_flickr_params(slot, seed, width, height):
+    if slot not in FLICKR_KEYWORDS:
+        raise web.HTTPNotFound()
+    if not seed.isdigit() or not 1 <= int(seed) <= 2147483647:
+        raise web.HTTPNotFound()
+    if width != "800" or height != "600":
+        raise web.HTTPNotFound()
+
+
 def loremflickr_url(slot, seed, width, height):
-    keyword = FLICKR_KEYWORDS.get(slot, FLICKR_KEYWORDS["living"])
+    validate_flickr_params(slot, seed, width, height)
+    keyword = FLICKR_KEYWORDS[slot]
     return f"https://loremflickr.com/{width}/{height}/{keyword}?lock={seed}"
+
+
+def is_valid_jpeg(data):
+    return len(data) > 2000 and data[:3] == bytes((0xFF, 0xD8, 0xFF))
 
 
 def cache_file(sub):
@@ -67,9 +81,8 @@ async def fetch(session, url, timeout=45):
             if resp.status == 200:
                 data = await resp.read()
                 if (
-                    len(data) > 2000
-                    and resp.content_type.lower() in {"image/jpeg", "image/jpg"}
-                    and data[:3] == bytes((0xFF, 0xD8, 0xFF))
+                    resp.content_type.lower() in {"image/jpeg", "image/jpg"}
+                    and is_valid_jpeg(data)
                 ):
                     return data
                 log.warning(
@@ -91,17 +104,21 @@ async def serve(sub, fetcher, cached_source):
         try:
             with open(cf, "rb") as file:
                 data = file.read()
-            return web.Response(
-                body=data,
-                content_type="image/jpeg",
-                headers={
-                    "Cache-Control": LONG_CACHE,
-                    "X-Cache": "HIT",
-                    "X-Image-Source": cached_source,
-                },
-            )
-        except Exception:
-            pass
+            with open(cf + ".source", encoding="ascii") as file:
+                stored_source = file.read()
+            if is_valid_jpeg(data) and stored_source == cached_source:
+                return web.Response(
+                    body=data,
+                    content_type="image/jpeg",
+                    headers={
+                        "Cache-Control": LONG_CACHE,
+                        "X-Cache": "HIT",
+                        "X-Image-Source": stored_source,
+                    },
+                )
+            log.warning("invalid cache entry %s; refetching", sub)
+        except Exception as exc:
+            log.warning("cache read failed %s: %s; refetching", sub, exc)
 
     result = await fetcher()
     if not result:
@@ -130,7 +147,10 @@ async def serve(sub, fetcher, cached_source):
             os.makedirs(os.path.dirname(cf), exist_ok=True)
             with open(cf + ".tmp", "wb") as file:
                 file.write(result.data)
+            with open(cf + ".source.tmp", "w", encoding="ascii") as file:
+                file.write(result.source)
             os.replace(cf + ".tmp", cf)
+            os.replace(cf + ".source.tmp", cf + ".source")
         except Exception as exc:
             log.error("cache write failed: %s", exc)
 
@@ -162,6 +182,7 @@ async def flickr_handler(request):
     seed = request.match_info["seed"]
     width = request.match_info["w"]
     height = request.match_info["h"]
+    validate_flickr_params(slot, seed, width, height)
     sub = f"flickr/{slot}/{seed}/{width}/{height}"
     session = await get_session()
 

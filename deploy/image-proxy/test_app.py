@@ -64,6 +64,18 @@ class FlickrTests(unittest.IsolatedAsyncioTestCase):
                     f"https://loremflickr.com/800/600/{keyword}?lock=38937901",
                 )
 
+    def test_invalid_flickr_route_parameters_are_rejected(self):
+        invalid = [
+            ("garage", "38937901", "800", "600"),
+            ("cover", "not-a-number", "800", "600"),
+            ("cover", "0", "800", "600"),
+            ("cover", "2147483648", "800", "600"),
+            ("cover", "38937901", "1600", "1200"),
+        ]
+        for params in invalid:
+            with self.subTest(params=params), self.assertRaises(app.web.HTTPNotFound):
+                app.validate_flickr_params(*params)
+
     async def test_loremflickr_retries_twice_before_success(self):
         payload = b"\xff\xd8\xff" + b"x" * 3000
 
@@ -78,7 +90,7 @@ class FlickrTests(unittest.IsolatedAsyncioTestCase):
 
 class ServeTests(unittest.IsolatedAsyncioTestCase):
     async def test_cacheable_pollinations_response_is_written_and_reused(self):
-        payload = b"x" * 3000
+        payload = b"\xff\xd8\xff" + b"x" * 3000
         with tempfile.TemporaryDirectory() as cache_dir, patch.object(app, "CACHE_DIR", cache_dir):
             calls = 0
 
@@ -136,6 +148,50 @@ class ServeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(second.headers["X-Cache"], "HIT")
             self.assertEqual(second.headers["X-Image-Source"], "loremflickr")
             self.assertEqual(calls, 1)
+
+    async def test_invalid_cached_bytes_are_refetched(self):
+        sub = "flickr/bed/38937903/800/600"
+        valid = b"\xff\xd8\xff" + b"v" * 3000
+        with tempfile.TemporaryDirectory() as cache_dir, patch.object(
+            app, "CACHE_DIR", cache_dir
+        ):
+            cache_path = app.cache_file(sub)
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "wb") as cache_file:
+                cache_file.write(b"not-a-jpeg" * 400)
+            with open(cache_path + ".source", "w", encoding="ascii") as source_file:
+                source_file.write("loremflickr")
+            calls = 0
+
+            async def fetcher():
+                nonlocal calls
+                calls += 1
+                return app.FetchResult(valid, "loremflickr", True)
+
+            response = await app.serve(sub, fetcher, "loremflickr")
+            self.assertEqual(response.headers["X-Cache"], "MISS")
+            self.assertEqual(calls, 1)
+            with open(cache_path, "rb") as cache_file:
+                self.assertEqual(cache_file.read(), valid)
+
+    async def test_cache_without_matching_source_metadata_is_refetched(self):
+        sub = "flickr/living/38937902/800/600"
+        valid = b"\xff\xd8\xff" + b"n" * 3000
+        with tempfile.TemporaryDirectory() as cache_dir, patch.object(
+            app, "CACHE_DIR", cache_dir
+        ):
+            cache_path = app.cache_file(sub)
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "wb") as cache_file:
+                cache_file.write(valid)
+
+            async def fetcher():
+                return app.FetchResult(valid, "loremflickr", True)
+
+            response = await app.serve(sub, fetcher, "loremflickr")
+            self.assertEqual(response.headers["X-Cache"], "MISS")
+            with open(cache_path + ".source", encoding="ascii") as source_file:
+                self.assertEqual(source_file.read(), "loremflickr")
 
     async def test_missing_loremflickr_returns_uncached_placeholder(self):
         sub = "flickr/kitchen/38937904/800/600"
