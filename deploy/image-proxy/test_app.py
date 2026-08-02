@@ -48,6 +48,34 @@ class FetchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, payload)
 
 
+class FlickrTests(unittest.IsolatedAsyncioTestCase):
+    def test_loremflickr_url_maps_each_slot_to_a_room_keyword(self):
+        expected = {
+            "cover": "apartment",
+            "living": "livingroom",
+            "bed": "bedroom",
+            "kitchen": "kitchen",
+        }
+
+        for slot, keyword in expected.items():
+            with self.subTest(slot=slot):
+                self.assertEqual(
+                    app.loremflickr_url(slot, "38937901", "800", "600"),
+                    f"https://loremflickr.com/800/600/{keyword}?lock=38937901",
+                )
+
+    async def test_loremflickr_retries_twice_before_success(self):
+        payload = b"\xff\xd8\xff" + b"x" * 3000
+
+        with patch.object(app, "fetch", side_effect=[None, None, payload]) as fetch_mock:
+            result = await app.fetch_loremflickr(
+                object(), "living", "38937902", "800", "600"
+            )
+
+        self.assertEqual(result, app.FetchResult(payload, "loremflickr", True))
+        self.assertEqual(fetch_mock.await_count, 3)
+
+
 class ServeTests(unittest.IsolatedAsyncioTestCase):
     async def test_cacheable_pollinations_response_is_written_and_reused(self):
         payload = b"x" * 3000
@@ -59,8 +87,12 @@ class ServeTests(unittest.IsolatedAsyncioTestCase):
                 calls += 1
                 return app.FetchResult(payload, "pollinations", True)
 
-            first = await app.serve("real/living/101/800/600", fetcher)
-            second = await app.serve("real/living/101/800/600", fetcher)
+            first = await app.serve(
+                "real/living/101/800/600", fetcher, "pollinations"
+            )
+            second = await app.serve(
+                "real/living/101/800/600", fetcher, "pollinations"
+            )
 
             self.assertEqual(first.headers["X-Cache"], "MISS")
             self.assertEqual(second.headers["X-Cache"], "HIT")
@@ -75,12 +107,52 @@ class ServeTests(unittest.IsolatedAsyncioTestCase):
             async def fetcher():
                 return app.FetchResult(payload, "picsum-fallback", False)
 
-            response = await app.serve("real/cover/202/800/600", fetcher)
+            response = await app.serve(
+                "real/cover/202/800/600", fetcher, "pollinations"
+            )
 
             self.assertEqual(response.headers["X-Cache"], "BYPASS")
             self.assertEqual(response.headers["X-Image-Source"], "picsum-fallback")
             self.assertEqual(response.headers["Cache-Control"], "no-store")
             self.assertFalse(os.path.exists(app.cache_file("real/cover/202/800/600")))
+
+    async def test_loremflickr_cache_hit_reports_flickr_source(self):
+        payload = b"\xff\xd8\xff" + b"z" * 3000
+        sub = "flickr/cover/38937901/800/600"
+        with tempfile.TemporaryDirectory() as cache_dir, patch.object(
+            app, "CACHE_DIR", cache_dir
+        ):
+            calls = 0
+
+            async def fetcher():
+                nonlocal calls
+                calls += 1
+                return app.FetchResult(payload, "loremflickr", True)
+
+            first = await app.serve(sub, fetcher, "loremflickr")
+            second = await app.serve(sub, fetcher, "loremflickr")
+
+            self.assertEqual(first.headers["X-Cache"], "MISS")
+            self.assertEqual(second.headers["X-Cache"], "HIT")
+            self.assertEqual(second.headers["X-Image-Source"], "loremflickr")
+            self.assertEqual(calls, 1)
+
+    async def test_missing_loremflickr_returns_uncached_placeholder(self):
+        sub = "flickr/kitchen/38937904/800/600"
+        with tempfile.TemporaryDirectory() as cache_dir, patch.object(
+            app, "CACHE_DIR", cache_dir
+        ):
+            async def fetcher():
+                return None
+
+            response = await app.serve(sub, fetcher, "loremflickr")
+
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.content_type, "image/svg+xml")
+            self.assertEqual(response.headers["X-Cache"], "BYPASS")
+            self.assertEqual(response.headers["X-Image-Source"], "placeholder")
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertFalse(os.path.exists(app.cache_file(sub)))
 
 
 if __name__ == "__main__":

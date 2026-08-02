@@ -1,10 +1,4 @@
-"""
-图片代理服务：Pollinations 按场景生成房产摄影风格图片，Picsum 仅临时兜底。
-
-路径：
-  /img/real/{slot}/{seed}/{w}/{h}  按场景生成图片（cover/living/bed/kitchen）
-  /img/{sub}                       兼容旧 Picsum 路径
-"""
+"""按场景代理并缓存房源图片。"""
 import hashlib
 import logging
 import os
@@ -48,6 +42,18 @@ SLOT_PROMPTS = {
     "bed": "cozy bedroom interior with bed real estate photography",
     "kitchen": "modern kitchen interior with cabinets real estate photography",
 }
+FLICKR_KEYWORDS = {
+    "cover": "apartment",
+    "living": "livingroom",
+    "bed": "bedroom",
+    "kitchen": "kitchen",
+}
+PLACEHOLDER_SVG = b"""<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="800" height="600" fill="#eef1f4"/><path d="M250 390l100-110 75 80 55-55 90 85H250z" fill="#bac3cc"/><circle cx="325" cy="215" r="34" fill="#bac3cc"/></svg>"""
+
+
+def loremflickr_url(slot, seed, width, height):
+    keyword = FLICKR_KEYWORDS.get(slot, FLICKR_KEYWORDS["living"])
+    return f"https://loremflickr.com/{width}/{height}/{keyword}?lock={seed}"
 
 
 def cache_file(sub):
@@ -79,7 +85,7 @@ async def fetch(session, url, timeout=45):
     return None
 
 
-async def serve(sub, fetcher):
+async def serve(sub, fetcher, cached_source):
     cf = cache_file(sub)
     if os.path.exists(cf):
         try:
@@ -91,7 +97,7 @@ async def serve(sub, fetcher):
                 headers={
                     "Cache-Control": LONG_CACHE,
                     "X-Cache": "HIT",
-                    "X-Image-Source": "pollinations",
+                    "X-Image-Source": cached_source,
                 },
             )
         except Exception:
@@ -99,6 +105,16 @@ async def serve(sub, fetcher):
 
     result = await fetcher()
     if not result:
+        if cached_source == "loremflickr":
+            return web.Response(
+                body=PLACEHOLDER_SVG,
+                content_type="image/svg+xml",
+                headers={
+                    "Cache-Control": "no-store",
+                    "X-Cache": "BYPASS",
+                    "X-Image-Source": "placeholder",
+                },
+            )
         return web.Response(
             status=502,
             text="upstream unavailable",
@@ -132,6 +148,29 @@ async def serve(sub, fetcher):
     )
 
 
+async def fetch_loremflickr(session, slot, seed, width, height):
+    url = loremflickr_url(slot, seed, width, height)
+    for _ in range(3):
+        data = await fetch(session, url, 45)
+        if data:
+            return FetchResult(data, "loremflickr", True)
+    return None
+
+
+async def flickr_handler(request):
+    slot = request.match_info["slot"]
+    seed = request.match_info["seed"]
+    width = request.match_info["w"]
+    height = request.match_info["h"]
+    sub = f"flickr/{slot}/{seed}/{width}/{height}"
+    session = await get_session()
+
+    async def fetcher():
+        return await fetch_loremflickr(session, slot, seed, width, height)
+
+    return await serve(sub, fetcher, "loremflickr")
+
+
 async def real_handler(request):
     slot = request.match_info["slot"]
     seed = request.match_info["seed"]
@@ -154,7 +193,7 @@ async def real_handler(request):
         data = await fetch(session, url, 15)
         return FetchResult(data, "picsum-fallback", False) if data else None
 
-    return await serve(sub, fetcher)
+    return await serve(sub, fetcher, "pollinations")
 
 
 async def proxy_handler(request):
@@ -165,7 +204,7 @@ async def proxy_handler(request):
         data = await fetch(session, f"https://picsum.photos/{sub}", 20)
         return FetchResult(data, "picsum", False) if data else None
 
-    return await serve(sub, fetcher)
+    return await serve(sub, fetcher, "picsum")
 
 
 async def health_handler(request):
@@ -181,6 +220,7 @@ async def on_cleanup(app):
 def make_app():
     app = web.Application(client_max_size=1024 * 1024)
     app.router.add_get("/health", health_handler)
+    app.router.add_get("/img/flickr/{slot}/{seed}/{w}/{h}", flickr_handler)
     app.router.add_get("/img/real/{slot}/{seed}/{w}/{h}", real_handler)
     app.router.add_get("/img/{sub:.*}", proxy_handler)
     app.on_cleanup.append(on_cleanup)
