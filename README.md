@@ -93,13 +93,15 @@ cp .env.app.example .env.app
 ### 3. 一键启动 ⭐
 ```bash
 docker compose up -d
+chmod +x scripts/wait-until-ready.sh
+./scripts/wait-until-ready.sh
 ```
 
 **这一条命令会自动按依赖顺序启动全部 25 个服务**:
 - 中间件(17):MySQL 主从 + Redis Sentinel(1主2从3哨兵) + Nacos 集群(3 节点) + RocketMQ + Prometheus/Grafana 监控
 - 应用(8):Gateway / User / House / Order / Payment / Notice / Contract + Nginx
 
-> 首次启动会在 Docker 内编译 Java(多阶段构建),约 5-10 分钟,后续启动秒级。
+> 脚本会等待 Nacos、数据库、业务服务和网关真正健康，并预热房源列表与首张图片；看到 `system is ready` 后再登录。首次构建约 5-10 分钟。
 
 ### 4. 查看状态
 ```bash
@@ -119,7 +121,7 @@ docker compose logs -f apartment-gateway           # 看某个服务日志
 ```bash
 docker compose down                 # 停止全部
 docker compose down -v              # 停止并删除数据(慎用!)
-docker compose restart              # 重启全部
+docker compose up -d && ./scripts/wait-until-ready.sh  # 推荐的一键恢复方式
 docker compose up -d --build xxx    # 重新构建某个服务
 ```
 
