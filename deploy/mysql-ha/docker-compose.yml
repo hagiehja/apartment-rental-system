@@ -16,6 +16,12 @@ services:
       - mysql-ha-master-data:/var/lib/mysql
       - ./master-init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   mysql-ha-slave:
     image: mariadb:10.11
@@ -33,6 +39,12 @@ services:
     volumes:
       - mysql-ha-slave-data:/var/lib/mysql
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
 volumes:
   mysql-ha-master-data:

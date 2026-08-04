@@ -9,6 +9,9 @@ x-app-common: &app-common
   restart: unless-stopped
   extra_hosts:
     - "host.docker.internal:host-gateway"
+  depends_on:
+    nacos1:
+      condition: service_healthy
   # 日志限制: 每个容器最多 3 个文件 × 50MB = 150MB 上限
   # 防止高并发下 stdout 日志把磁盘吃满 (上次磁盘使用率到 96%)
   logging:
@@ -34,7 +37,8 @@ services:
       - "${FRONTEND_PORT:-5173}:80"
     restart: unless-stopped
     depends_on:
-      - nginx
+      nginx:
+        condition: service_healthy
 
   nginx:
     image: nginx:1.27-alpine
@@ -46,14 +50,15 @@ services:
       - ./deploy/nginx/ops:/usr/share/nginx/html/ops:ro
     depends_on:
       apartment-gateway:
-        condition: service_started
+        condition: service_healthy
       image-proxy:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null 2>&1 && wget -q -O - http://apartment-gateway:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 10s
-      timeout: 3s
-      retries: 3
+      timeout: 5s
+      retries: 6
+      start_period: 10s
 
   apartment-gateway:
     <<: *app-common
@@ -67,12 +72,18 @@ services:
     expose:
       - "8080"
     depends_on:
-      - apartment-user-service
-      - apartment-house-service
-      - apartment-order-service
-      - apartment-payment-service
-      - apartment-notice-service
-      - apartment-contract-service
+      apartment-user-service:
+        condition: service_healthy
+      apartment-house-service:
+        condition: service_healthy
+      apartment-order-service:
+        condition: service_healthy
+      apartment-payment-service:
+        condition: service_healthy
+      apartment-notice-service:
+        condition: service_healthy
+      apartment-contract-service:
+        condition: service_healthy
 
   apartment-user-service:
     <<: *app-common

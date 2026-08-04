@@ -10,20 +10,36 @@ services:
     container_name: redis-master
     # 必须带 --masterauth:failover 后本容器可能变 slave,无 masterauth 会报 NOAUTH 复制失败
     command: redis-server --appendonly yes --requirepass ApmtRedis2026Secure! --masterauth ApmtRedis2026Secure! --replica-announce-ip 192.168.24.129 --replica-announce-port 6379
+    env_file:
+      - ../../.env.app
     ports:
       - "6379:6379"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   redis-slave:
     image: redis:6.2.14
     container_name: redis-slave
     command: redis-server --slaveof redis-master 6379 --masterauth ApmtRedis2026Secure! --requirepass ApmtRedis2026Secure! --replica-announce-ip 192.168.24.129 --replica-announce-port 6380
+    env_file:
+      - ../../.env.app
     ports:
       - "6380:6379"
     depends_on:
       - redis-master
     restart: unless-stopped
 
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
   redis-sentinel-1:
     image: redis:6.2.14
     container_name: redis-sentinel-1
@@ -36,6 +52,11 @@ services:
       - redis-slave
     restart: unless-stopped
 
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
   redis-sentinel-2:
     image: redis:6.2.14
     container_name: redis-sentinel-2
@@ -47,6 +68,11 @@ services:
       - redis-slave
     restart: unless-stopped
 
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
   redis-sentinel-3:
     image: redis:6.2.14
     container_name: redis-sentinel-3
@@ -57,3 +83,8 @@ services:
       - redis-master
       - redis-slave
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
