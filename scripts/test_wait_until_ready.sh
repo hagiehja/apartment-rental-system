@@ -38,9 +38,21 @@ export COUNT_FILE="$COUNT"
 export READY_MAX_ATTEMPTS=4
 export READY_RETRY_INTERVAL=0
 export FAKE_FAIL_FIRST=2
+export PUBLIC_FRONTEND_URL="http://192.168.24.129:5173"
+export PUBLIC_BASE_URL="http://192.168.24.129"
+export PUBLIC_PROMETHEUS_URL="http://192.168.24.129:9090"
+export PUBLIC_GRAFANA_URL="http://192.168.24.129:3000"
 
 output="$($SCRIPT)"
 grep -q "system is ready" <<<"$output"
+grep -q "frontend: $PUBLIC_FRONTEND_URL" <<<"$output"
+grep -q "gateway: $PUBLIC_BASE_URL" <<<"$output"
+grep -q "prometheus: $PUBLIC_PROMETHEUS_URL" <<<"$output"
+grep -q "grafana: $PUBLIC_GRAFANA_URL" <<<"$output"
+if grep -q 'frontend: http://127.0.0.1:5173' <<<"$output"; then
+    echo "readiness output advertised a VM-local frontend URL" >&2
+    exit 1
+fi
 grep -q 'http://127.0.0.1:5173/' "$EVENTS"
 grep -q 'http://127.0.0.1/gateway/health' "$EVENTS"
 grep -q 'http://127.0.0.1/api/user/login' "$EVENTS"
