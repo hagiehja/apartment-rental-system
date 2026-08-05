@@ -15,7 +15,8 @@ name: apartment-system
 
 include:
   - deploy/mysql-ha/docker-compose.yml        # MySQL 主从
-  - deploy/redis-ha/docker-compose.yml        # Redis Sentinel
+  - path: deploy/redis-ha/docker-compose.yml  # Redis Sentinel
+    env_file: ${APP_ENV_FILE:-.env.app}
   - deploy/nacos-cluster/docker-compose.yml   # Nacos 集群
   - deploy/rocketmq/docker-compose.yml        # RocketMQ
   - deploy/monitor/docker-compose.yml         # Prometheus + Grafana，默认随一键部署启动

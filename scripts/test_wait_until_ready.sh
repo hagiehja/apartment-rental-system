@@ -26,6 +26,7 @@ if [ "$count" -le "${FAKE_FAIL_FIRST:-0}" ]; then exit 22; fi
 case "$url" in
   *"${FAIL_COMPONENT:-__never__}"*) exit 22 ;;
   */api/house/list*) printf '%s' '{"code":200,"data":{"records":[{"imageUrl":"/img/flickr/cover/38937901/800/600"}]}}' ;;
+  */api/user/login*) printf '%s\n%s' "${FAKE_LOGIN_BODY:-{\"code\":400,\"data\":null}}" "${FAKE_LOGIN_STATUS:-200}" ;;
   *) printf '%s' 'ok' ;;
 esac
 EOF
@@ -42,7 +43,8 @@ output="$($SCRIPT)"
 grep -q "system is ready" <<<"$output"
 grep -q 'http://127.0.0.1:5173/' "$EVENTS"
 grep -q 'http://127.0.0.1/gateway/health' "$EVENTS"
-grep -q 'http://127.0.0.1/api/house/list?page=1&size=6' "$EVENTS"
+grep -q 'http://127.0.0.1/api/user/login' "$EVENTS"
+grep -q 'http://127.0.0.1/api/house/list?pageNum=1&pageSize=6' "$EVENTS"
 grep -q 'http://127.0.0.1/img/flickr/cover/38937901/800/600' "$EVENTS"
 grep -q 'http://127.0.0.1:9090/-/healthy' "$EVENTS"
 grep -q 'http://127.0.0.1:3000/api/health' "$EVENTS"
@@ -57,5 +59,24 @@ if "$SCRIPT" >"$TMP/failure.log" 2>&1; then
 fi
 grep -q "Grafana" "$TMP/failure.log"
 grep -q "docker compose logs" "$TMP/failure.log"
+
+printf '0' > "$COUNT"
+export FAIL_COMPONENT='/api/user/login'
+if "$SCRIPT" >"$TMP/login-failure.log" 2>&1; then
+    echo "permanent login route failure unexpectedly succeeded" >&2
+    exit 1
+fi
+grep -q "Login route" "$TMP/login-failure.log"
+
+printf '0' > "$COUNT"
+unset FAIL_COMPONENT
+export FAKE_LOGIN_BODY='Unauthorized'
+export FAKE_LOGIN_STATUS=401
+export READY_MAX_ATTEMPTS=1
+if "$SCRIPT" >"$TMP/proxy-401.log" 2>&1; then
+    echo "proxy 401 unexpectedly marked login route ready" >&2
+    exit 1
+fi
+grep -q "Login route" "$TMP/proxy-401.log"
 
 echo "wait-until-ready tests passed"

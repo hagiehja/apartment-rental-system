@@ -5,7 +5,7 @@ x-app-common: &app-common
     context: .
     dockerfile: Dockerfile.service
   env_file:
-    - .env.app
+    - ${APP_ENV_FILE:-.env.app}
   restart: unless-stopped
   extra_hosts:
     - "host.docker.internal:host-gateway"
@@ -106,6 +106,7 @@ services:
         MODULE: apartment-house-service
     environment:
       SERVER_PORT: "8083"
+      WAIT_FOR_RW_MYSQL: "true"
     expose:
       - "8083"
 

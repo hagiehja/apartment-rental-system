@@ -90,11 +90,14 @@ cp .env.app.example .env.app
 # 按需修改 .env.app 里的 IP / 密码(默认指向 192.168.24.129)
 ```
 
+> 就绪脚本需要宿主机安装 `curl`，只有看到 `system is ready` 后再打开登录页。
+
 ### 3. 一键启动 ⭐
 ```bash
-docker compose up -d
-chmod +x scripts/wait-until-ready.sh
-./scripts/wait-until-ready.sh
+./start.sh                       # Existing containers: safe daily start
+
+docker compose up -d             # First deployment or config change
+./scripts/wait-until-ready.sh    # Wait for "system is ready"
 ```
 
 **这一条命令会自动按依赖顺序启动全部 25 个服务**:

@@ -23,7 +23,7 @@ services:
     ports:
       - "9876:9876"
     healthcheck:
-      test: ["CMD-SHELL", "ps -ef | grep -q '[m]qnamesrv'"]
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9876'"]
       interval: 10s
       timeout: 5s
       retries: 18
@@ -51,7 +51,7 @@ services:
     networks:
       - rocketmq-net
     healthcheck:
-      test: ["CMD-SHELL", "ps -ef | grep -q '[m]qbroker'"]
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/10911'"]
       interval: 10s
       timeout: 5s
       retries: 18
@@ -66,8 +66,10 @@ services:
     ports:
       - "8888:8080"
     depends_on:
-      - namesrv
-      - broker
+      namesrv:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
     networks:
       - rocketmq-net
 
