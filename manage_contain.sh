@@ -13,6 +13,10 @@ declare -ga CTR_NAMES
 declare -gA CTR_STATUS CTR_PORT CTR_GROUP IDX2NAME
 declare -g SELECTED=""
 
+WAIT_INTERVAL_SECONDS="${WAIT_INTERVAL_SECONDS:-3}"
+INFRA_READY_TIMEOUT_SECONDS="${INFRA_READY_TIMEOUT_SECONDS:-180}"
+APP_READY_TIMEOUT_SECONDS="${APP_READY_TIMEOUT_SECONDS:-240}"
+
 GROUP_ORDER=(db cache registry mq biz)
 declare -A GROUP_TITLE=(
   [db]="[数据库 MySQL]"
@@ -174,20 +178,140 @@ IP: {{range $k,$v := .NetworkSettings.Networks}}{{$v.IPAddress}} {{end}}' 2>/dev
   done
 }
 
+container_is_running() {
+  [[ "$(docker inspect --format '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]
+}
+
+start_if_needed() {
+  local name="$1"
+  if ! container_is_running "$name"; then
+    echo "  启动 $name"
+    docker start "$name" >/dev/null
+  fi
+}
+
+wait_until() {
+  local label="$1" timeout_seconds="$2" probe="$3"
+  shift 3
+  local started_at=$SECONDS
+
+  printf "  等待 %s" "$label"
+  until "$probe" "$@"; do
+    if (( SECONDS - started_at >= timeout_seconds )); then
+      echo
+      echo "${RED}✗ 等待 $label 超时 (${timeout_seconds}s)，后续服务未启动${NC}" >&2
+      return 1
+    fi
+    printf "."
+    sleep "$WAIT_INTERVAL_SECONDS"
+  done
+  echo " ${GREEN}✓ 已就绪${NC}"
+}
+
+nacos_container_ready() {
+  local name="$1"
+  container_is_running "$name" || return 1
+  docker exec "$name" bash -ec '
+    curl -fsS --max-time 2 http://127.0.0.1:8848/nacos/v1/console/health/readiness >/dev/null &&
+    nc -z -w 2 127.0.0.1 9848
+  ' >/dev/null 2>&1
+}
+
+wait_for_nacos_cluster() {
+  local name found=0
+  for name in "${CTR_NAMES[@]}"; do
+    [[ "${CTR_GROUP[$name]}" == "registry" ]] || continue
+    found=1
+    wait_until "Nacos 节点 $name (HTTP + gRPC)" \
+      "$INFRA_READY_TIMEOUT_SECONDS" nacos_container_ready "$name" || return 1
+  done
+  if (( found == 0 )); then
+    echo "${RED}✗ 未找到 Nacos 容器，业务服务未启动${NC}" >&2
+    return 1
+  fi
+}
+
+container_health_status() {
+  docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+    "$1" 2>/dev/null
+}
+
+container_is_healthy() {
+  local name="$1"
+  container_is_running "$name" || return 1
+  [[ "$(container_health_status "$name")" == "healthy" ]]
+}
+
+wait_for_container_health() {
+  local name="$1"
+  if [[ "$(container_health_status "$name")" == "none" ]]; then
+    echo "${RED}✗ $name 没有 healthcheck，无法确认服务已就绪${NC}" >&2
+    return 1
+  fi
+  wait_until "$(short_name "$name") 健康检查" \
+    "$APP_READY_TIMEOUT_SECONDS" container_is_healthy "$name"
+}
+
+is_gateway_container() {
+  [[ "${1,,}" == *gateway* ]]
+}
+
+is_nginx_container() {
+  [[ "${1,,}" == *nginx* ]]
+}
+
+is_edge_container() {
+  local name="${1,,}"
+  [[ "$name" == *frontend* || "$name" == *image-proxy* ]]
+}
+
 all_up() {
   echo "${GREEN}> 启动全部容器(基础设施优先)...${NC}"
+
+  # 1. 先启动全部基础设施。Nacos 就绪也间接证明其依赖的 MySQL 已可用。
   for n in "${CTR_NAMES[@]}"; do
     case "${CTR_GROUP[$n]}" in db|cache|registry|mq)
-      [[ "${CTR_STATUS[$n]}" != Up* ]] && { echo "  启动 $n"; docker start "$n" >/dev/null; }
+      start_if_needed "$n" || return 1
     ;; esac
   done
-  sleep 3
+  wait_for_nacos_cluster || return 1
+
+  # 2. 先启动并等待下游业务服务，避免 Gateway 注册到尚未就绪的实例。
   for n in "${CTR_NAMES[@]}"; do
-    [[ "${CTR_GROUP[$n]}" == "biz" && "${CTR_STATUS[$n]}" != Up* ]] && {
-      echo "  启动 $n"; docker start "$n" >/dev/null
-    }
+    [[ "${CTR_GROUP[$n]}" == "biz" ]] || continue
+    is_gateway_container "$n" && continue
+    is_nginx_container "$n" && continue
+    is_edge_container "$n" && continue
+    start_if_needed "$n" || return 1
   done
-  echo "${GREEN}✓ 完成${NC}"; sleep 1.5
+  for n in "${CTR_NAMES[@]}"; do
+    [[ "${CTR_GROUP[$n]}" == "biz" ]] || continue
+    is_gateway_container "$n" && continue
+    is_nginx_container "$n" && continue
+    is_edge_container "$n" && continue
+    wait_for_container_health "$n" || return 1
+  done
+
+  # 3. 下游全部健康后再启动 Gateway。
+  for n in "${CTR_NAMES[@]}"; do
+    [[ "${CTR_GROUP[$n]}" == "biz" ]] && is_gateway_container "$n" || continue
+    start_if_needed "$n" || return 1
+    wait_for_container_health "$n" || return 1
+  done
+
+  # 4. Gateway 健康后再开放 Nginx，最后启动前端和图片代理。
+  for n in "${CTR_NAMES[@]}"; do
+    [[ "${CTR_GROUP[$n]}" == "biz" ]] && is_nginx_container "$n" || continue
+    start_if_needed "$n" || return 1
+    wait_for_container_health "$n" || return 1
+  done
+  for n in "${CTR_NAMES[@]}"; do
+    [[ "${CTR_GROUP[$n]}" == "biz" ]] && is_edge_container "$n" || continue
+    start_if_needed "$n" || return 1
+  done
+
+  echo "${GREEN}✓ 全部服务已按依赖顺序启动并通过健康检查${NC}"
+  sleep 1.5
 }
 
 all_down() {

@@ -24,6 +24,12 @@ x-nacos-common: &nacos-common
     PREFER_HOSTNAME_OVER_IP: "false"
     TZ: Asia/Shanghai
   restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS --max-time 2 http://127.0.0.1:8848/nacos/v1/console/health/readiness >/dev/null && nc -z -w 2 127.0.0.1 9848"]
+    interval: 10s
+    timeout: 5s
+    retries: 18
+    start_period: 30s
 
 services:
   nacos1:
