@@ -1,6 +1,7 @@
 import pytest
 
 from config import Settings
+from data.test_data import new_house, new_user
 from utils.api_client import ApiClient, redact
 from utils.assertions import assert_success
 
@@ -59,3 +60,11 @@ def test_http_verbs_delegate_to_request(monkeypatch):
 
 def test_assert_success_checks_business_code():
     assert assert_success(FakeResponse()) == {"value": 1}
+
+
+def test_factories_generate_unique_values():
+    first = new_user("TENANT")
+    second = new_user("TENANT")
+    assert first["username"] != second["username"]
+    assert first["phone"] != second["phone"]
+    assert new_house()["title"] != new_house()["title"]
