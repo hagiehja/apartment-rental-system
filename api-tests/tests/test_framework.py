@@ -1,6 +1,16 @@
 import pytest
 
 from config import Settings
+from utils.api_client import ApiClient, redact
+from utils.assertions import assert_success
+
+
+class FakeResponse:
+    status_code = 200
+    text = '{"code":200,"message":"ok","data":{"value":1}}'
+
+    def json(self):
+        return {"code": 200, "message": "ok", "data": {"value": 1}}
 
 
 def test_settings_require_base_url(monkeypatch):
@@ -14,3 +24,38 @@ def test_settings_normalize_base_url(monkeypatch):
     settings = Settings.from_env()
     assert settings.base_url == "http://example.test"
     assert settings.timeout == 10.0
+
+
+def test_redact_sensitive_fields():
+    value = redact(
+        {
+            "password": "secret",
+            "token": "jwt-value",
+            "phone": "13800138000",
+            "nested": {"Authorization": "Bearer abc"},
+        }
+    )
+    assert value["password"] == "[REDACTED]"
+    assert value["token"] == "[REDACTED]"
+    assert value["phone"] == "138****8000"
+    assert value["nested"]["Authorization"] == "[REDACTED]"
+
+
+def test_http_verbs_delegate_to_request(monkeypatch):
+    client = ApiClient("http://example.test", timeout=3)
+    calls = []
+
+    def fake_request(method, path, **kwargs):
+        calls.append((method, path, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr(client, "request", fake_request)
+    client.get("/a")
+    client.post("/b", json={"x": 1})
+    client.put("/c")
+    client.delete("/d")
+    assert [call[0] for call in calls] == ["GET", "POST", "PUT", "DELETE"]
+
+
+def test_assert_success_checks_business_code():
+    assert assert_success(FakeResponse()) == {"value": 1}
