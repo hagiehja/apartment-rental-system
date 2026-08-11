@@ -48,3 +48,11 @@ docs/STARTUP-GUIDE.md
 
 # Local isolated worktrees
 .worktrees/
+
+# Pytest API automation
+api-tests/.venv/
+api-tests/allure-results/
+api-tests/allure-report/
+api-tests/junit-*.xml
+api-tests/.pytest_cache/
+api-tests/**/__pycache__/
