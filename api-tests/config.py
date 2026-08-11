@@ -18,6 +18,7 @@ class Settings:
     payment_service_url: str | None
     contract_service_url: str | None
     notification_service_url: str | None
+    test_contract_id: int | None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -40,4 +41,5 @@ class Settings:
             payment_service_url=os.getenv("PAYMENT_SERVICE_URL"),
             contract_service_url=os.getenv("CONTRACT_SERVICE_URL"),
             notification_service_url=os.getenv("NOTIFICATION_SERVICE_URL"),
+            test_contract_id=int(os.environ["TEST_CONTRACT_ID"]) if os.getenv("TEST_CONTRACT_ID") else None,
         )

@@ -3,7 +3,7 @@ import logging
 import pytest
 
 from config import Settings
-from data.test_data import new_house
+from data.test_data import new_house, new_order
 from utils.api_client import ApiClient
 from utils.assertions import assert_success
 
@@ -91,3 +91,30 @@ def published_house(landlord_client):
                 logger.warning("测试房源清理失败 houseId=%s status=%s body=%s", house_id, response.status_code, body)
         except Exception as exc:  # teardown 不覆盖原始测试结果
             logger.warning("测试房源清理异常 houseId=%s error=%s", house_id, exc)
+
+
+@pytest.fixture
+def created_order(tenant_client, published_house):
+    payload = new_order(published_house["houseId"])
+    result = assert_success(tenant_client.post("/api/order", json=payload))
+    order_no = result["orderNo"]
+    detail = assert_success(tenant_client.get(f"/api/order/{order_no}"))
+    resource = {
+        "orderNo": order_no,
+        "orderId": detail["orderId"],
+        "detail": detail,
+        "payload": payload,
+    }
+    try:
+        yield resource
+    finally:
+        try:
+            response = tenant_client.put(
+                f"/api/order/{order_no}/cancel",
+                json={"cancelReason": "pytest cleanup"},
+            )
+            body = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+            if response.status_code != 200 or body.get("code") != 200:
+                logger.warning("测试订单清理失败 orderNo=%s status=%s body=%s", order_no, response.status_code, body)
+        except Exception as exc:  # teardown 不覆盖原始测试结果
+            logger.warning("测试订单清理异常 orderNo=%s error=%s", order_no, exc)
