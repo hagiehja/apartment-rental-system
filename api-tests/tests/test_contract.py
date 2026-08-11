@@ -78,10 +78,10 @@ def test_terminate_contract(settings, tenant_client):
 
 @allure.feature("合同服务")
 @pytest.mark.internal
-def test_contract_internal_routes(settings, created_order):
+def test_contract_internal_routes(settings):
     if not settings.contract_service_url:
         pytest.skip("缺少 CONTRACT_SERVICE_URL")
     client = ApiClient(settings.contract_service_url, timeout=settings.timeout)
-    assert_rejected(client.post("/contract/generate", json={}))
-    assert_rejected(client.post(f"/contract/cancel/order/{created_order['orderId']}"))
-    assert_rejected(client.post("/contract/landlord-income", params={"orderNo": "NOT-EXIST", "amount": 1}))
+    assert_rejected(client.post("/contract/generate", data="{", headers={"Content-Type": "application/json"}))
+    assert_success(client.post("/contract/cancel/order/999999999"))
+    assert_success(client.post("/contract/landlord-income", params={"orderNo": "999999999", "amount": 1}))

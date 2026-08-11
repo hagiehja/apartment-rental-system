@@ -47,6 +47,9 @@ def test_redact_sensitive_fields():
     assert value["token"] == "[REDACTED]"
     assert value["phone"] == "138****8000"
     assert value["nested"]["Authorization"] == "[REDACTED]"
+    assert redact("https://example.test?phone=13800138000&token=abc") == (
+        "https://example.test?phone=138****8000&token=[REDACTED]"
+    )
 
 
 def test_http_verbs_delegate_to_request(monkeypatch):
@@ -80,3 +83,15 @@ def test_factories_generate_unique_values():
 def test_assert_rejected_accepts_business_error():
     body = assert_rejected(FakeBusinessErrorResponse())
     assert body["message"] == "invalid"
+
+
+def test_client_does_not_attach_expected_http_error(monkeypatch):
+    client = ApiClient("http://example.test")
+    response = FakeResponse()
+    response.status_code = 400
+    monkeypatch.setattr(client.session, "request", lambda *args, **kwargs: response)
+    attachments = []
+    monkeypatch.setattr("utils.api_client.attach_response_failure", attachments.append)
+
+    assert client.get("/negative-case").status_code == 400
+    assert attachments == []

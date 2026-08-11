@@ -27,10 +27,14 @@ def assert_business_error(response, expected_code: int):
 
 
 def assert_unauthorized(response) -> None:
+    if response.status_code != 401:
+        attach_response_failure(response)
     assert response.status_code == 401, response.text
 
 
 def assert_forbidden(response) -> None:
+    if response.status_code != 403:
+        attach_response_failure(response)
     assert response.status_code == 403, response.text
 
 

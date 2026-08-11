@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Any
 
 import allure
@@ -21,6 +22,14 @@ def redact(value: Any, key: str = "") -> Any:
         return "[REDACTED]"
     if key.lower() == "phone" and isinstance(value, str) and len(value) == 11:
         return f"{value[:3]}****{value[-4:]}"
+    if isinstance(value, str):
+        value = re.sub(r"(?<!\d)(1\d{2})\d{4}(\d{4})(?!\d)", r"\1****\2", value)
+        value = re.sub(
+            r"(?i)(authorization|access_token|refresh_token|token|password)=([^&\s]+)",
+            r"\1=[REDACTED]",
+            value,
+        )
+        return value
     if isinstance(value, dict):
         return {item_key: redact(item_value, item_key) for item_key, item_value in value.items()}
     if isinstance(value, (list, tuple)):
@@ -50,7 +59,7 @@ def attach_response_failure(response: requests.Response) -> None:
     request = response.request
     detail = {
         "method": request.method,
-        "url": request.url,
+        "url": redact(request.url),
         "request": redact(
             {
                 "headers": dict(request.headers),
@@ -88,7 +97,7 @@ class ApiClient:
         except requests.RequestException:
             detail = {
                 "method": method,
-                "url": url,
+                "url": redact(url),
                 "request": redact(kwargs),
                 "response": None,
             }
@@ -98,8 +107,6 @@ class ApiClient:
                 attachment_type=allure.attachment_type.JSON,
             )
             raise
-        if response.status_code >= 400:
-            attach_response_failure(response)
         return response
 
     def get(self, path: str, **kwargs) -> requests.Response:
