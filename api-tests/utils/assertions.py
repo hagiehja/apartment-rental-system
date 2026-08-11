@@ -32,3 +32,17 @@ def assert_unauthorized(response) -> None:
 
 def assert_forbidden(response) -> None:
     assert response.status_code == 403, response.text
+
+
+def assert_rejected(response, allowed_http=(400, 401, 403, 404, 409, 422)):
+    if response.status_code in allowed_http:
+        try:
+            return response.json()
+        except ValueError:
+            return {"message": response.text}
+    if response.status_code == 200:
+        body = response.json()
+        if body.get("code") != 200:
+            return body
+    attach_response_failure(response)
+    raise AssertionError(f"请求未被正确拒绝: HTTP {response.status_code} {response.text}")

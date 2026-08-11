@@ -3,7 +3,7 @@ import pytest
 from config import Settings
 from data.test_data import new_house, new_user
 from utils.api_client import ApiClient, redact
-from utils.assertions import assert_success
+from utils.assertions import assert_rejected, assert_success
 
 
 class FakeResponse:
@@ -12,6 +12,13 @@ class FakeResponse:
 
     def json(self):
         return {"code": 200, "message": "ok", "data": {"value": 1}}
+
+
+class FakeBusinessErrorResponse(FakeResponse):
+    text = '{"code":400,"message":"invalid","data":null}'
+
+    def json(self):
+        return {"code": 400, "message": "invalid", "data": None}
 
 
 def test_settings_require_base_url(monkeypatch):
@@ -68,3 +75,8 @@ def test_factories_generate_unique_values():
     assert first["username"] != second["username"]
     assert first["phone"] != second["phone"]
     assert new_house()["title"] != new_house()["title"]
+
+
+def test_assert_rejected_accepts_business_error():
+    body = assert_rejected(FakeBusinessErrorResponse())
+    assert body["message"] == "invalid"
