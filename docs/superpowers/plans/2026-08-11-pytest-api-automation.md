@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 使用 pytest、requests、Allure 和 Jenkins，为 Gateway 及六个业务微服务建立可重复执行、默认安全、可生成报告的接口自动化测试。
+**Goal:** 使用 pytest、requests、Allure 和 Jenkins，为 Gateway 及六个业务微服务建立覆盖正常与异常场景、默认安全、可生成报告的接口自动化测试。
 
 **Architecture:** 测试代码放在独立的 `api-tests` 目录，通过一个 `ApiClient` 统一发送请求、脱敏并在失败时附加 Allure 信息；`conftest.py` 提供认证客户端和 API 级资源清理 Fixture。Jenkins 只面向已部署环境运行 health、smoke、普通回归和显式启用的特殊测试，不负责启动业务容器。
 
@@ -513,11 +513,11 @@ Expected: 当前没有可用 Gateway 时 FAIL，且不能把 Jenkins 响应识�
 
 - [ ] **Step 2: 添加用户接口用例**
 
-覆盖 health、register、login、错误密码、verify、batch、stats、admin list、admin role update，以及未登录/非管理员拒绝场景。注册数据使用 `new_user()`；管理员修改角色只针对本次测试创建的用户，并在结束前恢复原角色。
+覆盖 health、register、login、verify、batch、stats、admin list、admin role update。异常场景使用参数化覆盖注册缺少必填项、非法手机号、短密码、非法角色、重复账号，登录空账号/错误密码，verify 缺少或伪造 Token，batch 空 ID/不存在 ID，以及未登录和非管理员访问管理接口。注册数据使用 `new_user()`；管理员修改角色只针对本次测试创建的用户，并在结束前恢复原角色。
 
 - [ ] **Step 3: 添加房源接口用例**
 
-覆盖 publish、list、detail、update、offline、online、delete、recommend、behavior track、preference save/get、model-info 和未登录拒绝。房源 CRUD 使用 `published_house` Fixture，删除用例自行创建独立房源，避免与其他用例共享状态。
+覆盖 publish、list、detail、update、offline、online、delete、recommend、behavior track、preference save/get、model-info。异常场景覆盖发布缺少标题/城市/地址/价格、非法租赁类型、负数价格，列表非法分页和价格区间，查询不存在房源，未登录修改，非房东本人修改/删除，重复上下架，不存在用户推荐，以及行为类型非法。房源 CRUD 使用 `published_house` Fixture，删除用例自行创建独立房源，避免与其他用例共享状态。
 
 - [ ] **Step 4: 做静态收集验证并提交**
 
@@ -547,6 +547,8 @@ git commit -m "test: cover gateway user and house apis"
 - [ ] **Step 1: 添加普通业务接口**
 
 订单覆盖 create、detail、my list、landlord list、cancel；支付覆盖 balance 和 transactions；合同覆盖 detail、order query、list、sign、download、refund preview；通知覆盖 unread count、unread list、paged list、detail、mark read、mark all read 和 delete。
+
+异常场景至少覆盖：订单缺少房源、过去日期、租期 0/25、不存在房源、未登录、越权查询、重复取消；支付缺少订单号/方式、不存在支付单、余额不足、重复支付、未支付退款、重复退款；合同不存在、错误签署角色、重复签署、越权退租；通知不存在、其他用户读取/删除、重复已读。涉及资金或关键状态的异常场景继续标记 `destructive`，不进入普通回归。
 
 - [ ] **Step 2: 隔离特殊接口**
 
@@ -587,6 +589,8 @@ git commit -m "test: cover order payment contract and notification apis"
 - [ ] **Step 2: 添加清理和依赖失败说明**
 
 在 `try/finally` 或 Fixture teardown 中优先删除尚可删除的房源；不可逆订单和交易使用唯一数据。异步合同或通知未出现时，断言错误必须包含缺失阶段，不使用无条件 sleep，也不伪造通过。
+
+在主流程之外增加关键状态异常断言：已占用或已下架房源不能再次正常下单、已支付订单不能重复支付、已经退款的支付单不能再次退款。所有这些断言都保留 `e2e` 与 `destructive` 标记。
 
 - [ ] **Step 3: 收集验证并提交**
 
@@ -661,6 +665,8 @@ api-tests\.venv\Scripts\python.exe -m pytest -c api-tests/pytest.ini api-tests/t
 ```
 
 Expected: 全部用例可收集，无未知 marker；默认集合不含特殊用例。
+
+同时生成一份按 Controller 方法维护的覆盖清单，核对源码统计的 65 个接口均能映射到至少一个 pytest 用例；对参数化异常场景记录用例 ID，使 Allure 中能够区分失败参数。
 
 - [ ] **Step 3: 在真实测试环境执行 health 和 smoke**
 
