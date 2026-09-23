@@ -4,6 +4,12 @@
 .vscode/
 .cursor/
 .trae/
+*.code-workspace
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
 
 # Java / Maven
 target/
@@ -11,19 +17,59 @@ bin/
 *.class
 *.jar
 *.jar.original
+.mvn/timing.properties
+
+# Local Maven settings (keep the shared root settings.xml)
+settings.local.xml
 
 # Frontend
 frontend/node_modules/
 frontend/dist/
 frontend/frontend-dist.zip
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
 
 # Logs / crash dumps
 *.log
 hs_err_pid*.log
 replay_pid*.log
+logs/
+*.pid
+*.pid.lock
 
-# Local Docker app env
-.env.app
+# Environment files and secrets; commit example templates only
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+secrets/
+**/secrets/
+
+# Machine-specific application and Compose overrides
+**/application-local.yml
+**/application-local.yaml
+**/application-secret.yml
+**/application-secret.yaml
+**/application-*.local.yml
+**/application-*.local.yaml
+docker-compose.override.yml
+docker-compose.*.override.yml
+docker-compose.local.yml
+docker-compose.*.local.yml
+compose.override.yml
+compose.*.override.yml
+compose.local.yml
+compose.*.local.yml
 
 # Temporary debug files
 error_body.txt
@@ -31,6 +77,27 @@ payment_error.txt
 orders_debug.txt
 orders_house5.txt
 query
+*_check_result.txt
+check_result.txt
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Test, browser automation, and generated reports
+.playwright-cli/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+coverage/
+.coverage
+.pytest_cache/
+**/__pycache__/
+*.py[cod]
+output/
+screenshots/
 
 # 临时垃圾文件
 NUL
