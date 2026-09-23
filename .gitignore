@@ -1,0 +1,50 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+.cursor/
+.trae/
+
+# Java / Maven
+target/
+bin/
+*.class
+*.jar
+*.jar.original
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/frontend-dist.zip
+
+# Logs / crash dumps
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Local Docker app env
+.env.app
+
+# Temporary debug files
+error_body.txt
+payment_error.txt
+orders_debug.txt
+orders_house5.txt
+query
+
+# 临时垃圾文件
+NUL
+*.bak
+*.bak.*
+deploy/fix/
+**/NUL
+
+# 论文/实验相关文件(不公开)
+experiments/
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
+docs/STARTUP-GUIDE.md
+
+# Local isolated worktrees
+.worktrees/

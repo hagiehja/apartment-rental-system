@@ -1,0 +1,77 @@
+server:
+  port: ${SERVER_PORT:8087}
+
+spring:
+  application:
+    name: apartment-payment-service
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:apartment_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+mybatis-plus:
+  type-aliases-package: com.example.payment.entity
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.example.payment: debug
+    org.springframework: info
+
+# Redis配置
+spring.data.redis:
+  sentinel:
+    master: mymaster
+    nodes: 192.168.24.129:26379,192.168.24.129:26380,192.168.24.129:26381
+    password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+  password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+  database: 2  # 支付服务使用database 2
+  timeout: 3000ms
+  lettuce:
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 0
+      max-wait: -1ms
+
+# Redisson配置
+spring.redisson:
+  config: |
+    sentinelConfig:
+      masterName: mymaster
+      sentinelAddresses:
+        - "redis://192.168.24.129:26379"
+        - "redis://192.168.24.129:26380"
+        - "redis://192.168.24.129:26381"
+      sentinelPassword: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      database: 2
+      connectionPoolSize: 64
+      connectionMinimumIdleSize: 10
+      timeout: 3000
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness
+# ============ [L0 容灾] Sentinel 熔断/降级/限流 控制台接入 ============
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:192.168.24.129:8858}
+      eager: true       # 启动即连接控制台,而非首次访问才注册

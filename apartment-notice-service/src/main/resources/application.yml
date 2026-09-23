@@ -1,0 +1,58 @@
+server:
+  port: ${SERVER_PORT:8091}
+
+spring:
+  application:
+    name: apartment-notice-service
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${NOTICE_MYSQL_DATABASE:apartment_notification}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# RocketMQ 配置
+rocketmq:
+  name-server: ${ROCKETMQ_NAMESRV:192.168.24.129:9876}
+  producer:
+    group: notification-producer-group
+    send-message-timeout: 3000
+    # 消息最大大小 4MB
+    max-message-size: 4194304
+    # 发送失败重试次数
+    retry-times-when-send-failed: 2
+  consumer:
+    group: notification-consumer-group
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 打印 SQL 日志(开发环境)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.notification.entity
+
+# 日志配置
+logging:
+  level:
+    com.example.notification: debug
+    org.apache.rocketmq: info
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness
+# ============ [L0 容灾] Sentinel 熔断/降级/限流 控制台接入 ============
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:192.168.24.129:8858}
+      eager: true       # 启动即连接控制台,而非首次访问才注册

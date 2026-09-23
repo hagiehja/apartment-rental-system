@@ -1,0 +1,79 @@
+spring:
+  application:
+    name: apartment-house-service
+  # ============================================================
+  # dynamic-datasource 读写分离
+  # master(192.168.24.129:3310) 写,slave(3311) 读
+  # @DS("slave") 注解的方法走从库,默认走主库
+  # ============================================================
+  datasource:
+    dynamic:
+      primary: master
+      strict: false
+      datasource:
+        master:
+          url: jdbc:mysql://${RW_MASTER_HOST:192.168.24.129}:${RW_MASTER_PORT:3310}/${MYSQL_DATABASE:apartment_db}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+          username: ${MYSQL_USERNAME:root}
+          password: ${MYSQL_PASSWORD:123456}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+        slave:
+          url: jdbc:mysql://${RW_SLAVE_HOST:192.168.24.129}:${RW_SLAVE_PORT:3311}/${MYSQL_DATABASE:apartment_db}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+          username: ${MYSQL_USERNAME:root}
+          password: ${MYSQL_PASSWORD:123456}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 30
+        minimum-idle: 10
+  # Redis 连接配置：用于缓存热点房源，减轻 MySQL 查询压力
+  data:
+    redis:
+      sentinel:
+        master: mymaster
+        nodes: 192.168.24.129:26379,192.168.24.129:26380,192.168.24.129:26381
+        password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+  # 使用 Redis 作为 Spring Cache 的后端
+  cache:
+    type: redis
+
+mybatis-plus:
+  type-aliases-package: com.example.house.entity
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+server:
+  port: ${SERVER_PORT:8083}
+
+logging:
+  level:
+    com.example.house: debug
+    org.springframework: info
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness
+# ============ [L0 容灾] Sentinel 熔断/降级/限流 控制台接入 ============
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:192.168.24.129:8858}
+      eager: true       # 启动即连接控制台,而非首次访问才注册

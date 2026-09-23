@@ -1,0 +1,89 @@
+server:
+  port: ${SERVER_PORT:8092}
+
+spring:
+  application:
+    name: apartment-contract-service
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${CONTRACT_MYSQL_DATABASE:apartment_contract}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 打印 SQL 日志(开发环境)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.contract.entity
+
+# 合同文件存储配置
+contract:
+  file:
+    # Windows环境
+    base-path: ${CONTRACT_FILE_BASE_PATH:/data/apartment/contracts}
+    # Linux/Mac环境可使用: /var/apartment/contracts
+
+# 订单服务地址
+order:
+  service:
+    url: ${ORDER_SERVICE_URL:http://apartment-order-service:8088}
+
+# 通知服务地址
+notification:
+  service:
+    url: ${NOTIFICATION_SERVICE_URL:http://apartment-notice-service:8091}
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAMESRV:192.168.24.129:9876}
+  producer:
+    group: contract-service-producer-group
+
+# 日志配置
+logging:
+  level:
+    com.example.contract: debug
+
+# Redis配置 (禁用)
+# spring.data.redis:
+#   host: localhost
+#   port: 6379
+#   database: 3  # 合同服务使用 database 3
+#   timeout: 3000ms
+#   lettuce:
+#     pool:
+#       max-active: 8
+#       max-idle: 8
+#       min-idle: 0
+#       max-wait: -1ms
+
+# Redisson配置 (禁用)
+# spring.redisson:
+#   config: |
+#     singleServerConfig:
+#       address: "redis://localhost:6379"
+#       database: 3
+#       connectionPoolSize: 64
+#       connectionMinimumIdleSize: 10
+#       timeout: 3000
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness
+# ============ [L0 容灾] Sentinel 熔断/降级/限流 控制台接入 ============
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:192.168.24.129:8858}
+      eager: true       # 启动即连接控制台,而非首次访问才注册

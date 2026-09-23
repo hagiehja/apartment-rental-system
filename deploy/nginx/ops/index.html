@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="30">
+<title>公寓系统运维总览</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+         background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; color: #fff;
+         padding: 20px; }
+  .header { text-align: center; padding: 20px 0; }
+  .header h1 { font-size: 28px; margin-bottom: 5px; }
+  .header .meta { font-size: 13px; opacity: 0.7; }
+  .header .meta .clock { font-weight: bold; color: #ffd166; }
+
+  .vm-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; max-width: 1200px; margin: 20px auto; }
+  .vm-card { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15); }
+  .vm-card .label { font-size: 12px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+  .vm-card .value { font-size: 22px; font-weight: bold; margin-top: 5px; }
+  .vm-card .value.warn { color: #ffd166; }
+  .vm-card .value.crit { color: #ff6b6b; }
+  .vm-card .bar { height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .vm-card .bar > div { height: 100%; background: linear-gradient(90deg, #4caf50, #ffd166, #ff6b6b); transition: width 0.5s; }
+
+  .services { max-width: 1200px; margin: 20px auto; }
+  .section-title { font-size: 14px; opacity: 0.8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; }
+  .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
+  .svc { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; border-left: 4px solid #888; transition: all 0.3s; }
+  .svc.up { border-left-color: #4caf50; }
+  .svc.down { border-left-color: #ff6b6b; background: rgba(255,107,107,0.15); }
+  .svc.loading { border-left-color: #ffd166; }
+  .svc .name { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .svc .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #888; display: inline-block; }
+  .svc.up .status-dot { background: #4caf50; box-shadow: 0 0 10px #4caf50; animation: pulse 2s infinite; }
+  .svc.down .status-dot { background: #ff6b6b; }
+  .svc.loading .status-dot { background: #ffd166; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+  .svc .port { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+  .svc .detail { font-size: 12px; margin-top: 10px; line-height: 1.6; opacity: 0.85; }
+  .svc .error { color: #ffbaba; font-family: monospace; font-size: 11px; margin-top: 8px; word-break: break-all; }
+
+  .footer { text-align: center; padding: 20px; font-size: 12px; opacity: 0.5; }
+  .actions { text-align: center; margin: 15px 0; }
+  .actions a { color: #fff; background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 6px;
+               text-decoration: none; margin: 0 8px; font-size: 13px; transition: background 0.2s; }
+  .actions a:hover { background: rgba(255,255,255,0.25); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏢 智慧公寓租赁系统 · 运维总览</h1>
+  <div class="meta">
+    <span>VM: 192.168.24.129</span> ·
+    <span class="clock" id="clock">--:--:--</span> ·
+    <span>每 10s 自动刷新</span>
+  </div>
+</div>
+
+<div class="actions">
+  <a href="http://192.168.24.129:3000" target="_blank">📊 Grafana 监控</a>
+  <a href="http://192.168.24.129:9090" target="_blank">🔥 Prometheus</a>
+  <a href="http://192.168.24.129:8848/nacos" target="_blank">📚 Nacos 控制台</a>
+  <a href="http://192.168.24.129:8085" target="_blank">📦 cAdvisor (容器)</a>
+</div>
+
+<div class="vm-bar" id="vmBar">
+  <div class="vm-card"><div class="label">磁盘使用</div><div class="value" id="disk">--</div><div class="bar"><div id="diskBar" style="width:0"></div></div></div>
+  <div class="vm-card"><div class="label">内存使用</div><div class="value" id="mem">--</div><div class="bar"><div id="memBar" style="width:0"></div></div></div>
+  <div class="vm-card"><div class="label">服务在线</div><div class="value" id="svcCount">-- / 7</div></div>
+  <div class="vm-card"><div class="label">健康检查</div><div class="value" id="lastCheck">--</div></div>
+</div>
+
+<div class="services">
+  <div class="section-title">⚙️ 微服务 (7)</div>
+  <div class="services-grid" id="services"></div>
+</div>
+
+<div class="footer">
+  © Apartment Rental System · Powered by Spring Cloud + Docker · 数据来源: Prometheus + Actuator
+</div>
+
+<script>
+const SERVICES = [
+  { name: "API Gateway",      key: "gateway",   port: 8080, desc: "API 网关 (Spring Cloud Gateway)" },
+  { name: "User Service",     key: "user",      port: 8081, desc: "用户 / 认证 / JWT" },
+  { name: "House Service",    key: "house",     port: 8083, desc: "房源 + DeepFM 推荐" },
+  { name: "Order Service",    key: "order",     port: 8088, desc: "订单 + 超时取消 (MQ)" },
+  { name: "Payment Service",  key: "payment",   port: 8087, desc: "支付" },
+  { name: "Notice Service",   key: "notice",    port: 8091, desc: "通知 (4 个 MQ Listener)" },
+  { name: "Contract Service", key: "contract",  port: 8092, desc: "合同" }
+];
+
+async function fetchJSON(url, timeoutMs = 3000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+async function checkService(svc) {
+  const el = document.createElement("div");
+  el.className = "svc loading";
+  el.innerHTML = `<div class="name"><span class="status-dot"></span>${svc.name}</div>
+    <div class="port">:${svc.port}</div>
+    <div class="detail">${svc.desc}<br>检查中...</div>`;
+  document.getElementById("services").appendChild(el);
+
+  try {
+    const h = await fetchJSON(`/ops/health/${svc.key}`);
+    const up = h.status === "UP";
+    el.className = "svc " + (up ? "up" : "down");
+    let detail = `<b>${h.status}</b>`;
+    if (h.components) {
+      const db = h.components.db;
+      const redis = h.components.redis;
+      const disk = h.components.diskSpace;
+      if (db) detail += ` · DB: ${db.status}`;
+      if (redis) detail += ` · Redis: ${redis.status}`;
+      if (disk && disk.details) {
+        const freeGB = (disk.details.free / 1073741824).toFixed(1);
+        detail += ` · 磁盘剩余: ${freeGB}GB`;
+      }
+    }
+    el.querySelector(".detail").innerHTML = `${svc.desc}<br>${detail}`;
+  } catch (e) {
+    el.className = "svc down";
+    el.querySelector(".detail").innerHTML = `${svc.desc}<br><b style="color:#ffbaba">连不上</b>`;
+    el.innerHTML += `<div class="error">${e.message}</div>`;
+  }
+}
+
+async function loadVM() {
+  try {
+    // 通过 Prometheus 查主机指标
+    const q = async (expr) => {
+      const r = await fetchJSON(`/ops/prom?query=${encodeURIComponent(expr)}`, 5000);
+      return r.data && r.data.result;
+    };
+
+    const diskUsed = await q('(1 - node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs"} / node_filesystem_size_bytes{mountpoint="/"}) * 100');
+    if (diskUsed && diskUsed[0]) {
+      const v = parseFloat(diskUsed[0].value[1]);
+      const el = document.getElementById("disk");
+      el.textContent = v.toFixed(1) + "%";
+      el.className = "value " + (v > 90 ? "crit" : v > 75 ? "warn" : "");
+      document.getElementById("diskBar").style.width = v + "%";
+    }
+
+    const memAvail = await q('node_memory_MemAvailable_bytes');
+    const memTotal = await q('node_memory_MemTotal_bytes');
+    if (memAvail && memTotal && memAvail[0] && memTotal[0]) {
+      const used = 100 * (1 - parseFloat(memAvail[0].value[1]) / parseFloat(memTotal[0].value[1]));
+      const el = document.getElementById("mem");
+      el.textContent = used.toFixed(1) + "%";
+      el.className = "value " + (used > 90 ? "crit" : used > 75 ? "warn" : "");
+      document.getElementById("memBar").style.width = used + "%";
+    }
+
+    const upServices = await q('up{job="apartment-apps"}');
+    if (upServices) {
+      const upCount = upServices.filter(x => x.value[1] === "1").length;
+      document.getElementById("svcCount").textContent = `${upCount} / 7`;
+    }
+  } catch (e) {
+    console.warn("VM metrics failed:", e);
+  }
+}
+
+function updateClock() {
+  const d = new Date();
+  document.getElementById("clock").textContent =
+    d.toLocaleTimeString("zh-CN", { hour12: false });
+  document.getElementById("lastCheck").textContent =
+    d.toLocaleTimeString("zh-CN", { hour12: false }).substring(0, 5);
+}
+
+async function refresh() {
+  document.getElementById("services").innerHTML = "";
+  for (const svc of SERVICES) await checkService(svc);
+  await loadVM();
+  updateClock();
+}
+
+refresh();
+setInterval(refresh, 10000);
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>

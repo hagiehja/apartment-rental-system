@@ -1,0 +1,22 @@
+# ================================================================
+# 公寓租赁系统 - 一键部署总入口
+# ================================================================
+# 使用方法:
+#   docker compose up -d            一键启动全部
+#   docker compose down              一键停止全部
+#   docker compose ps                查看所有服务状态
+#   docker compose logs -f xxx       看某个服务日志
+#
+# 启动顺序由 depends_on 自动控制:
+#   中间件 (MySQL/Redis/Nacos/RocketMQ) -> 应用 (7 个微服务) -> Nginx 网关
+# ================================================================
+
+name: apartment-system
+
+include:
+  - deploy/mysql-ha/docker-compose.yml        # MySQL 主从
+  - deploy/redis-ha/docker-compose.yml        # Redis Sentinel
+  - deploy/nacos-cluster/docker-compose.yml   # Nacos 集群
+  - deploy/rocketmq/docker-compose.yml        # RocketMQ
+  - deploy/monitor/docker-compose.yml         # Prometheus + Grafana 监控
+  - docker-compose.ha.yml                     # 7 个微服务 + Nginx

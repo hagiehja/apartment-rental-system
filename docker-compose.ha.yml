@@ -1,0 +1,186 @@
+name: apartment-ha
+
+x-app-common: &app-common
+  build:
+    context: .
+    dockerfile: Dockerfile.service
+  env_file:
+    - .env.app
+  restart: unless-stopped
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    nacos1:
+      condition: service_healthy
+  # 日志限制: 每个容器最多 3 个文件 × 50MB = 150MB 上限
+  # 防止高并发下 stdout 日志把磁盘吃满 (上次磁盘使用率到 96%)
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://localhost:$${SERVER_PORT:-8080}/actuator/health || exit 1"]
+    interval: 15s
+    timeout: 10s
+    retries: 5
+    start_period: 90s
+
+services:
+  # ============ 前端 (Vue 3 SPA + nginx 反代 API) ============
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: apartment-frontend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    restart: unless-stopped
+    depends_on:
+      nginx:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${HOST_HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/ops:/usr/share/nginx/html/ops:ro
+    depends_on:
+      apartment-gateway:
+        condition: service_healthy
+      image-proxy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://apartment-gateway:8080/actuator/health 2>/dev/null | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  image-proxy:
+    build:
+      context: ./deploy/image-proxy
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      CACHE_DIR: /data/img-cache
+      REAL_GALLERY_DIR: /data/real-gallery
+      ENABLE_PICSUM_LAST_FALLBACK: "${ENABLE_PICSUM_LAST_FALLBACK:-false}"
+      ENABLE_LEGACY_PICSUM_FALLBACK: "${ENABLE_LEGACY_PICSUM_FALLBACK:-false}"
+    volumes:
+      - image-proxy-cache:/data/img-cache
+      - ./deploy/image-proxy/real-gallery:/data/real-gallery:ro
+    expose:
+      - "8088"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8088/health | grep -q ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  apartment-gateway:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-gateway
+    environment:
+      SERVER_PORT: 8080
+    expose:
+      - "8080"
+    depends_on:
+      apartment-user-service:
+        condition: service_healthy
+      apartment-house-service:
+        condition: service_healthy
+      apartment-order-service:
+        condition: service_healthy
+      apartment-payment-service:
+        condition: service_healthy
+      apartment-notice-service:
+        condition: service_healthy
+      apartment-contract-service:
+        condition: service_healthy
+
+  apartment-user-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-user-service
+    environment:
+      SERVER_PORT: "8081"
+    expose:
+      - "8081"
+
+  apartment-house-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-house-service
+    environment:
+      SERVER_PORT: "8083"
+    expose:
+      - "8083"
+
+  apartment-order-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-order-service
+    environment:
+      SERVER_PORT: "8088"
+    expose:
+      - "8088"
+
+  apartment-payment-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-payment-service
+    environment:
+      SERVER_PORT: "8087"
+    expose:
+      - "8087"
+
+  apartment-notice-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-notice-service
+    environment:
+      SERVER_PORT: "8091"
+    expose:
+      - "8091"
+
+  apartment-contract-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        MODULE: apartment-contract-service
+    environment:
+      SERVER_PORT: "8092"
+    expose:
+      - "8092"
+    volumes:
+      - contract-files:/data/apartment/contracts
+
+volumes:
+  contract-files:
+  image-proxy-cache:

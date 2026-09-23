@@ -1,0 +1,93 @@
+server:
+  port: ${SERVER_PORT:8088}
+  tomcat:
+    threads:
+      max: 500         # 默认 200，提升至 500 支撑高并发
+      min-spare: 50    # 保持 50 个线程预热，减少线程创建延迟
+    accept-count: 500  # 队列长度，防止 connection refused
+
+spring:
+  application:
+    name: apartment-order-service
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:192.168.24.129}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:apartment_db}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&rewriteBatchedStatements=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 50        # 核心优化：从 10 提升到 50，消除连接池瓶颈
+      minimum-idle: 20             # 保持 20 个空闲连接，减少连接创建开销
+      connection-timeout: 10000    # 获取连接超时 10 秒
+      idle-timeout: 300000         # 空闲连接 5 分钟回收
+      max-lifetime: 1200000        # 连接最大生命周期 20 分钟
+      pool-name: OrderHikariPool
+
+mybatis-plus:
+  type-aliases-package: com.example.order.entity
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    # 关闭 SQL 控制台日志打印：这是影响性能的最大单因素之一
+    # 压测期间每条 SQL 都打印到控制台，会严重降低吞吐量
+
+logging:
+  level:
+    # 压测时将 DEBUG 改为 WARN，减少日志 I/O 开销
+    com.example.order: warn
+    org.springframework: warn
+
+# Redis配置
+spring.data.redis:
+  sentinel:
+    master: mymaster
+    nodes: 192.168.24.129:26379,192.168.24.129:26380,192.168.24.129:26381
+    password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+  password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+  database: 1
+  timeout: 3000ms
+  lettuce:
+    pool:
+      max-active: 50    # 提升 Lettuce 连接池
+      max-idle: 20
+      min-idle: 10
+      max-wait: 5000ms
+
+# Redisson配置
+spring.redisson:
+  config: |
+    sentinelConfig:
+      masterName: mymaster
+      sentinelAddresses:
+        - "redis://192.168.24.129:26379"
+        - "redis://192.168.24.129:26380"
+        - "redis://192.168.24.129:26381"
+      sentinelPassword: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      password: ${REDIS_PASSWORD:ApmtRedis2026Secure!}
+      database: 1
+      connectionPoolSize: 128     # 提升 Redisson 连接池，支撑高并发锁操作
+      connectionMinimumIdleSize: 32
+      timeout: 3000
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAMESRV:192.168.24.129:9876}
+  producer:
+    group: order-service-producer-group
+---
+# ============ [L0 容灾] 健康检查端点(供 Docker/Nginx 探活与自愈) ============
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # 暴露 /actuator/health/liveness 与 /readiness
+# ============ [L0 容灾] Sentinel 熔断/降级/限流 控制台接入 ============
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:192.168.24.129:8858}
+      eager: true       # 启动即连接控制台,而非首次访问才注册
